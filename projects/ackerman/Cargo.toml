@@ -1,16 +1,17 @@
 [package]
-name = "sub_projects"
-publish = false
-version = "0.0.0"
+name = "ackerman"
+version = "0.1.2"
 authors = ["Aster <192607617@qq.com>"]
 description = "..."
-repository = "https://github.com/oovm/sub_projects"
-documentation = "https://docs.rs/sub_projects"
+repository = "https://github.com/oovm/Ackerman"
+documentation = "https://docs.rs/Ackerman"
 readme = "Readme.md"
 license = "MPL-2.0"
 edition = "2021"
 
+
 [dependencies]
+rocket = "0.5.0-rc.2"
 
 [dev-dependencies]
 
