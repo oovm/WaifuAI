@@ -1,11 +1,19 @@
-#[macro_use] extern crate rocket;
+use serde::Deserialize;
+use reqwest::Error;
 
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
+#[derive(Deserialize, Debug)]
+struct User {
+    login: String,
+    id: u32,
 }
 
-#[launch]
-fn rocket() -> _ {
-    rocket::build().mount("/", routes![index])
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let request_url = format!("https://api.sgroup.qq.com/users/@me");
+
+    let response = reqwest::get(&request_url).await?;
+
+    let users: Vec<User> = response.json().await?;
+    println!("{:?}", users);
+    Ok(())
 }
