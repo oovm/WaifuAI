@@ -1,41 +1,51 @@
 use super::*;
+use reqwest::{Method, RequestBuilder};
+use serde::{de::Error, Deserializer};
+use std::str::FromStr;
 use toml::{value::Datetime, Value};
-use url::Url;
+use url::{ParseError, Url};
 
 /// `GET /users/@me/guilds`
 ///
 /// <https://bot.q.qq.com/wiki/develop/api/openapi/user/guilds.html#%E8%8E%B7%E5%8F%96%E7%94%A8%E6%88%B7%E9%A2%91%E9%81%93%E5%88%97%E8%A1%A8>
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct GetGuildResponse {
+    name: String,
     description: String,
+    #[serde(deserialize_with = "read_icon")]
     icon: Url,
     id: u64,
-    joined_at: Datetime,
     max_members: u32,
     member_count: u32,
-    name: String,
+    owner: bool,
+    owner_id: u64,
+    joined_at: Datetime,
+}
+
+fn read_icon<'de, D>(deserializer: D) -> Result<Url, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+    match Url::from_str(s) {
+        Ok(o) => Ok(o),
+        Err(e) => Err(Error::custom(format!("{}", e))),
+    }
 }
 
 impl GetGuildResponse {
-    pub async fn send(key: &SecretKey) -> AckermanResult<Self> {
-        let request_url = if cfg!(debug_assertions) {
+    pub fn end_point() -> String {
+        if cfg!(debug_assertions) {
             format!("https://sandbox.api.sgroup.qq.com/users/@me/guilds")
         }
         else {
             format!("https://api.sgroup.qq.com/users/@me/guilds")
-        };
-        println!("{}", request_url);
-        let response = Client::default()
-            .get(request_url)
-            .header(USER_AGENT, "BotNodeSDK/v2.9.4")
-            .header(AUTHORIZATION, key.bot_token())
-            .timeout(Duration::from_secs(3))
-            .send()
-            .await?;
-        let out: Value = response.json().await?;
-        println!("{}", out);
-        todo!();
-        // return Ok(out);
+        }
+    }
+    pub async fn send(key: &SecretKey) -> AckermanResult<Self> {
+        let url = Url::from_str(&Self::end_point())?;
+        let response = key.as_request(Method::GET, url).send().await?;
+        Ok(response.json().await?)
     }
 }
 
