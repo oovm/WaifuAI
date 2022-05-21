@@ -6,15 +6,15 @@ use std::str::FromStr;
 use toml::{value::Datetime, Value};
 use url::{ParseError, Url};
 
-/// `GET /users/@me/guilds`
+/// `GET /channels/{channel_id}/messages/{message_id}`
 ///
-/// <https://bot.q.qq.com/wiki/develop/api/openapi/user/guilds.html>
+/// <https://bot.q.qq.com/wiki/develop/api/openapi/message/get_message_of_id.html>
 #[derive(Debug)]
-pub struct GetGuildListResponse {
+pub struct GetMessageListResponse {
     pub items: Vec<GuildItem>,
 }
 
-impl GetGuildListResponse {
+impl GetMessageListResponse {
     pub fn end_point() -> String {
         if cfg!(debug_assertions) {
             format!("https://sandbox.api.sgroup.qq.com/users/@me/guilds")
