@@ -1,4 +1,4 @@
-use ackerman::{AckermanResult, GetGuildResponse, SecretKey};
+use ackerman::{AckermanResult, GetChannelListResponse, GetGuildListResponse, SecretKey};
 use reqwest::{
     header::{HeaderMap, AUTHORIZATION},
     Client, Error, Url,
@@ -10,12 +10,21 @@ use toml::Value;
 #[tokio::main]
 async fn main() -> AckermanResult {
     let key = SecretKey::load("projects/ackerman/key.toml").unwrap();
-    if key.has_channel_id() {
+    if key.guild_id() == 0 {
+        let out = GetGuildListResponse::send(&key).await?;
+        println!("可行的频道有:");
+        for item in out.items {
+            println!("{}: {}", item.name, item.id)
+        }
+        return Ok(());
     }
-    else {
-        let out = GetGuildResponse::send(&key).await?;
-        println!("{:#?}", out);
+    if key.channel_id() == 0 {
+        let out = GetChannelListResponse::send(&key).await?;
+        println!("可行的频道有: {:#?}", out);
+        // for item in out.items {
+        //     println!("{}: {}", item.name, item.id)
+        // }
+        return Ok(());
     }
-
     Ok(())
 }
