@@ -9,7 +9,7 @@ use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::handshake::client::Response;
 use toml::Value;
 
-use ackerman::{AckermanResult, GetChannelListResponse, GetGuildListResponse, SecretKey};
+use ackerman::{AckermanResult, GetChannelListResponse, GetGuildListResponse, QQBotWebsocket, SecretKey};
 
 #[tokio::main]
 async fn main() -> AckermanResult {
