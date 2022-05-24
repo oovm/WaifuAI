@@ -1,17 +1,19 @@
-use ackerman::{AckermanResult, GetChannelListResponse, GetGuildListResponse, GetMessageListResponse, SecretKey};
+use std::str::FromStr;
+
 use futures_util::sink::SinkExt;
 use reqwest::{
-    header::{HeaderMap, AUTHORIZATION},
-    Client, Error, Method, Url,
+    Method, Url,
 };
-use serde::Deserialize;
-use std::{path::PathBuf, str::FromStr};
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio::net::TcpStream;
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::tungstenite::handshake::client::Response;
 use toml::Value;
+
+use ackerman::{AckermanResult, GetChannelListResponse, GetGuildListResponse, SecretKey};
 
 #[tokio::main]
 async fn main() -> AckermanResult {
-    let key = SecretKey::load("projects/ackerman/key.toml").unwrap();
+    let key = SecretKey::load("key.toml")?;
     if key.guild_id() == 0 {
         let out = GetGuildListResponse::send(&key).await?;
         println!("可行的频道有:");
@@ -30,14 +32,9 @@ async fn main() -> AckermanResult {
     }
     // let out = GetMessageListResponse::send(&key).await?;
     // println!("可行的子频道有: {:#?}", out);
-    let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
-    let value: Value = key.as_request(Method::GET, url).send().await?.json().await?;
-    println!("{:#?}", value);
-
-    let (mut wss, response) = connect_async("wss://sandbox.api.sgroup.qq.com/websocket").await.unwrap();
+    let mut wss = QQBotWebsocket::link(&key).await.unwrap();
     // let a = wss.send(Message::from(""));
-    println!("{:#?}", response);
     println!("{:#?}", wss);
-
     Ok(())
 }
+
