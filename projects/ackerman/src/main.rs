@@ -1,19 +1,16 @@
 use std::str::FromStr;
 
 use futures_util::sink::SinkExt;
-use reqwest::{
-    Method, Url,
-};
+use reqwest::{Method, Url};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
-use tokio_tungstenite::tungstenite::handshake::client::Response;
+use tokio_tungstenite::{connect_async, tungstenite::handshake::client::Response, MaybeTlsStream, WebSocketStream};
 use toml::Value;
 
-use ackerman::{AckermanResult, GetChannelListResponse, GetGuildListResponse, QQBotWebsocket, SecretKey};
+use ackerman::{AckermanResult, GetChannelListResponse, GetGuildListResponse, QQBotSecret, QQBotWebsocket};
 
 #[tokio::main]
 async fn main() -> AckermanResult {
-    let key = SecretKey::load("key.toml")?;
+    let key = QQBotSecret::load("key.toml")?;
     if key.guild_id() == 0 {
         let out = GetGuildListResponse::send(&key).await?;
         println!("可行的频道有:");
@@ -32,9 +29,8 @@ async fn main() -> AckermanResult {
     }
     // let out = GetMessageListResponse::send(&key).await?;
     // println!("可行的子频道有: {:#?}", out);
-    let mut wss = QQBotWebsocket::link(&key).await.unwrap();
-    // let a = wss.send(Message::from(""));
-    println!("{:#?}", wss);
+    let mut wss = QQBotWebsocket::link(&key).await?;
+    let out = wss.identify().await?;
+
     Ok(())
 }
-
