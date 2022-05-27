@@ -35,3 +35,9 @@ impl From<tokio_tungstenite::tungstenite::Error> for AckermanError {
         Self::NetError(e.to_string())
     }
 }
+
+impl From<serde_json::Error> for AckermanError {
+    fn from(e: serde_json::Error) -> Self {
+        Self::NetError(e.to_string())
+    }
+}

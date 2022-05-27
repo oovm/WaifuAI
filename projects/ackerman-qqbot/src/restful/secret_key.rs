@@ -2,7 +2,7 @@ use super::*;
 use reqwest::{Method, RequestBuilder};
 use url::Url;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct QQBotSecret {
     bot_app_id: u64,
     bot_secret: String,
@@ -11,7 +11,7 @@ pub struct QQBotSecret {
     deploy: ChannelIds,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ChannelIds {
     guild_id: u64,
     channel_id: u64,
