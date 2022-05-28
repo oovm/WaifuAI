@@ -4,17 +4,15 @@ use std::{
     str::FromStr,
 };
 
-use futures_util::{
-    stream::{SplitSink, SplitStream},
-    SinkExt, StreamExt,
-};
+use futures_util::{SinkExt, StreamExt};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, net::TcpStream};
+use serde_json::{from_str, to_string};
+use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use url::Url;
 
-use crate::{AckermanResult, QQBotSecret};
+use crate::{AckermanError, AckermanResult, QQBotSecret};
 
 pub struct QQBotWebsocket {
     pub wss: WebSocketStream<MaybeTlsStream<TcpStream>>,
@@ -72,25 +70,28 @@ impl QQBotWebsocket {
         let (wss, _) = connect_async(&value.url).await?;
         Ok(Self { wss, key: key.clone(), connected: value })
     }
-    pub async fn identify(&mut self) -> AckermanResult<Self> {
+    pub async fn send_identify(&mut self) -> AckermanResult<u64> {
         let op = QQBotOperation {
             //
             op: 2,
             d: QQBotOperationDispatch { token: self.key.bot_token(), intents: 0, shard: vec![0] },
         };
-
-        let (mut write, read) = self.wss.split();
-        println!("sending");
-        write.send(Message::Text(serde_json::to_string(&op)?)).await?;
-        println!("sent");
-        let read_future = read.for_each(|message| async {
-            println!("receiving...");
-            let data = message.unwrap().into_data();
-            tokio::io::stdout().write(&data).await.unwrap();
-            println!("received...");
-        });
-        read_future.await;
-
-        todo!()
+        self.wss.send(Message::Text(to_string(&op)?)).await?;
+        #[derive(Deserialize)]
+        struct HeartbeatResponse {
+            pub op: i64,
+            pub d: HeartbeatInterval,
+        }
+        #[derive(Deserialize)]
+        struct HeartbeatInterval {
+            pub heartbeat_interval: i64,
+        }
+        match self.wss.next().await {
+            Some(Ok(Message::Text(s))) => {
+                let json: HeartbeatResponse = from_str(&s)?;
+                Ok(json.d.heartbeat_interval as u64)
+            }
+            _ => Err(AckermanError::UnknownError),
+        }
     }
 }
