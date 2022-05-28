@@ -1,4 +1,5 @@
 use std::{
+    borrow::Borrow,
     fmt::{Debug, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
@@ -9,7 +10,11 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{Error, Message},
+    MaybeTlsStream, WebSocketStream,
+};
 use url::Url;
 
 use crate::{AckermanError, AckermanResult, QQBotSecret};
@@ -35,17 +40,22 @@ pub struct SessionStartLimit {
     total: u32,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct QQBotOperation {
     op: u32,
     d: QQBotOperationDispatch,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct QQBotOperationDispatch {
+    #[serde(default)]
     token: String,
+    #[serde(default)]
     intents: u32,
+    #[serde(default)]
     shard: Vec<u32>,
+    #[serde(default)]
+    heartbeat_interval: i64,
 }
 
 impl Debug for QQBotWebsocket {
@@ -70,11 +80,42 @@ impl QQBotWebsocket {
         let (wss, _) = connect_async(&value.url).await?;
         Ok(Self { wss, key: key.clone(), connected: value })
     }
+    pub async fn send_hello(&mut self) -> AckermanResult<u64> {
+        let op = QQBotOperation {
+            //
+            op: 1,
+            d: QQBotOperationDispatch {
+                token: self.key.bot_token(),
+                // https://bot.q.qq.com/wiki/develop/api/gateway/intents.html
+                intents: 1 << 9 + 1 << 26,
+                shard: vec![0, 4],
+                ..Default::default()
+            },
+        };
+        self.wss.send(Message::Text(to_string(&op)?)).await?;
+    }
+    pub async fn next_event(&mut self) -> AckermanResult {
+        let op: QQBotOperation = match self.wss.next().await {
+            Some(s) => match s? {
+                Message::Text(s) => from_str(&s)?,
+                _ => return Err(AckermanError::UnknownError),
+            },
+            None => return Ok(()),
+        };
+
+        let op: QQBotOperation = match self.wss.next().await {
+            Some(Ok(Message::Text(s))) => from_str(&s)?,
+            _ => return Err(AckermanError::UnknownError),
+        };
+        println!("{:#?}", op);
+        Ok(())
+    }
+
     pub async fn send_identify(&mut self) -> AckermanResult<u64> {
         let op = QQBotOperation {
             //
             op: 2,
-            d: QQBotOperationDispatch { token: self.key.bot_token(), intents: 0, shard: vec![0] },
+            d: QQBotOperationDispatch { token: self.key.bot_token(), intents: 0, shard: vec![0], ..Default::default() },
         };
         self.wss.send(Message::Text(to_string(&op)?)).await?;
         #[derive(Deserialize)]
@@ -88,8 +129,10 @@ impl QQBotWebsocket {
         }
         match self.wss.next().await {
             Some(Ok(Message::Text(s))) => {
-                let json: HeartbeatResponse = from_str(&s)?;
-                Ok(json.d.heartbeat_interval as u64)
+                let json: serde_json::Value = from_str(&s)?;
+                println!("{:#?}", json);
+                todo!()
+                // Ok(json.d.heartbeat_interval as u64)
             }
             _ => Err(AckermanError::UnknownError),
         }
