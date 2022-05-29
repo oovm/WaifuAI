@@ -24,8 +24,11 @@ async fn main() -> AckermanResult {
     // let out = GetMessageListResponse::send(&key).await?;
     // println!("可行的子频道有: {:#?}", out);
     let mut wss = QQBotWebsocket::link(&key).await?;
-    let out = wss.send_hello().await?;
-    let out = wss.send_identify().await?;
-    println!("心跳包: {:#?}", out);
+    wss.next_event().await?;
+    wss.send_identify().await?;
+    wss.next_event().await?;
+    wss.next_event().await?;
+    wss.next_event().await?;
+    wss.next_event().await?;
     Ok(())
 }
