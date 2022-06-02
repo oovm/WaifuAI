@@ -49,6 +49,8 @@ pub struct QQBotOperation {
     s: u32,
     #[serde(default)]
     t: String,
+    #[serde(default)]
+    id: String,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -64,6 +66,7 @@ impl QQBotOperation {
             QQBotOperationUnion::Dispatch(d) => d,
             QQBotOperationUnion::Boolean(_) => Default::default(),
             QQBotOperationUnion::Integer(_) => Default::default(),
+            QQBotOperationUnion::Message(_) => Default::default(),
         }
     }
 }
@@ -71,10 +74,10 @@ impl QQBotOperation {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum QQBotOperationUnion {
+    Message(MessageItem),
     Dispatch(QQBotOperationDispatch),
     Boolean(bool),
     Integer(u32),
-    Message(MessageItem),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -159,23 +162,20 @@ impl QQBotWebsocket {
         };
         println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
         match received.op {
-            0 => {
-                //  println!("    鉴权成功, 登陆为 {:?}", received.dispatched().user.username);
-                match received.d {
-                    QQBotOperationUnion::Dispatch(v) => {
-                        unreachable!("{:?}", v)
-                    }
-                    QQBotOperationUnion::Boolean(v) => {
-                        unreachable!("{:?}", v)
-                    }
-                    QQBotOperationUnion::Integer(v) => {
-                        unreachable!("{:?}", v)
-                    }
-                    QQBotOperationUnion::Message(msg) => {
-                        println!("收到消息 {:#?}", msg);
-                    }
+            0 => match received.d {
+                QQBotOperationUnion::Dispatch(v) => {
+                    println!("    鉴权成功, 登陆为 {:?}", v.user.username);
                 }
-            }
+                QQBotOperationUnion::Boolean(v) => {
+                    unreachable!("{:?}", v)
+                }
+                QQBotOperationUnion::Integer(v) => {
+                    unreachable!("{:?}", v)
+                }
+                QQBotOperationUnion::Message(msg) => {
+                    println!("收到消息 {:#?}", msg);
+                }
+            },
             9 => {
                 println!("    鉴权参数有误");
             }
@@ -197,7 +197,13 @@ impl QQBotWebsocket {
     }
     pub async fn send_heartbeat(&mut self) -> AckermanResult<()> {
         println!("[{}] 协议 1", Utc::now().format("%F %H:%M:%S"));
-        let protocol = QQBotOperation { op: 1, s: 0, t: "".to_string(), d: QQBotOperationUnion::Integer(self.heartbeat_id) };
+        let protocol = QQBotOperation {
+            op: 1,
+            s: 0,
+            t: "".to_string(),
+            d: QQBotOperationUnion::Integer(self.heartbeat_id),
+            id: "".to_string(),
+        };
         self.wss.send(Message::Text(to_string(&protocol)?)).await?;
         println!("    发送心跳包 {}", self.heartbeat_id);
         Ok(())
@@ -215,6 +221,7 @@ impl QQBotWebsocket {
                 shard: vec![0, 1],
                 ..Default::default()
             }),
+            id: "".to_string(),
         };
         self.wss.send(Message::Text(to_string(&protocol)?)).await?;
         println!("    首次连接鉴权");
