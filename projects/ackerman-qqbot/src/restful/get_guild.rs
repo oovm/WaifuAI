@@ -37,10 +37,10 @@ pub struct GuildItem {
     /// 描述
     pub description: String,
     /// 频道头像地址
-    #[serde(deserialize_with = "read_url")]
+    #[serde(deserialize_with = "crate::utils::read_url")]
     pub icon: Url,
     /// 频道ID
-    #[serde(deserialize_with = "read_u64")]
+    #[serde(deserialize_with = "crate::utils::read_u64")]
     pub id: u64,
     /// 	最大成员数
     pub max_members: u32,
@@ -49,42 +49,8 @@ pub struct GuildItem {
     /// 当前人是否是创建人
     pub owner: bool,
     /// 创建人用户ID
-    #[serde(deserialize_with = "read_u64")]
+    #[serde(deserialize_with = "crate::utils::read_u64")]
     pub owner_id: u64,
     /// 加入时间
-    #[serde(deserialize_with = "read_date")]
-    pub joined_at: Datetime,
-}
-
-fn read_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: &str = Deserialize::deserialize(deserializer)?;
-    match u64::from_str(s) {
-        Ok(o) => Ok(o),
-        Err(e) => Err(Error::custom(format!("{}", e))),
-    }
-}
-
-fn read_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: &str = Deserialize::deserialize(deserializer)?;
-    match Url::from_str(s) {
-        Ok(o) => Ok(o),
-        Err(e) => Err(Error::custom(format!("{}", e))),
-    }
-}
-
-fn read_date<'de, D>(deserializer: D) -> Result<Datetime, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: &str = Deserialize::deserialize(deserializer)?;
-    match Datetime::from_str(s) {
-        Ok(o) => Ok(o),
-        Err(e) => Err(Error::custom(format!("{}", e))),
-    }
+    pub joined_at: String,
 }

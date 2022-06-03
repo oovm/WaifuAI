@@ -5,7 +5,7 @@ pub use self::{
 
 mod errors;
 pub mod restful;
-mod utils;
+pub mod utils;
 mod wss;
 
 pub use self::restful::QQBotSecret;

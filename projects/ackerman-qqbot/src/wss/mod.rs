@@ -5,23 +5,33 @@ use std::{
     str::FromStr,
 };
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string, Value};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{Error, Message},
+    MaybeTlsStream, WebSocketStream,
+};
 use url::Url;
 
-use crate::{restful::MessageItem, AckermanResult, QQBotSecret};
+use crate::{AckermanResult, QQBotSecret};
+
+pub use self::{heartbeat_event::HeartbeatEvent, message_event::MessageEvent, ready_event::ReadyEvent};
+
+mod heartbeat_event;
+mod message_event;
+mod ready_event;
 
 pub struct QQBotWebsocket {
     pub wss: WebSocketStream<MaybeTlsStream<TcpStream>>,
     key: QQBotSecret,
     connected: QQBotConnected,
     pub closed: bool,
-    pub heartbeat_interval: u32,
+    pub heartbeat_interval: u64,
     pub heartbeat_id: u32,
 }
 
@@ -44,7 +54,7 @@ pub struct SessionStartLimit {
 pub struct QQBotOperation {
     op: u32,
     #[serde(default)]
-    d: QQBotOperationUnion,
+    d: EventDispatcher,
     #[serde(default)]
     s: u32,
     #[serde(default)]
@@ -60,61 +70,33 @@ pub struct User {
     pub bot: bool,
 }
 
-impl QQBotOperation {
-    pub fn dispatched(self) -> QQBotOperationDispatch {
-        match self.d {
-            QQBotOperationUnion::Dispatch(d) => d,
-            QQBotOperationUnion::Boolean(_) => Default::default(),
-            QQBotOperationUnion::Integer(_) => Default::default(),
-            QQBotOperationUnion::Message(_) => Default::default(),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
-pub enum QQBotOperationUnion {
-    Message(MessageItem),
+pub enum EventDispatcher {
+    Message(MessageEvent),
     Dispatch(QQBotOperationDispatch),
-    Boolean(bool),
+    HeartbeatEvent(HeartbeatEvent),
+    ReadyEvent(ReadyEvent),
+    MaybeFail(bool),
     Integer(u32),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct QQBotOperationDispatch {
-    #[serde(default)]
     token: String,
-    #[serde(default)]
     intents: u32,
-    #[serde(default)]
     shard: Vec<u32>,
-    #[serde(default)]
-    heartbeat_interval: u32,
-    #[serde(default)]
-    pub version: i64,
-    #[serde(default)]
-    pub session_id: String,
-    #[serde(default)]
-    pub user: User,
 }
 
-impl Default for QQBotOperationUnion {
+impl Default for EventDispatcher {
     fn default() -> Self {
-        Self::Boolean(false)
+        Self::MaybeFail(false)
     }
 }
 
 impl Default for QQBotOperationDispatch {
     fn default() -> Self {
-        Self {
-            token: "".to_string(),
-            intents: 0,
-            shard: vec![],
-            heartbeat_interval: 40000,
-            version: 0,
-            session_id: "".to_string(),
-            user: Default::default(),
-        }
+        Self { token: "".to_string(), intents: 0, shard: vec![] }
     }
 }
 
@@ -140,48 +122,49 @@ impl QQBotWebsocket {
         let (wss, _) = connect_async(&value.url).await?;
         Ok(Self { wss, key: key.clone(), connected: value, closed: false, heartbeat_interval: 40000, heartbeat_id: 0 })
     }
-    pub async fn next_event(&mut self) -> AckermanResult {
-        let received: QQBotOperation = match self.wss.next().await {
-            Some(s) => {
-                let ss = s?;
-                match ss {
-                    Message::Text(s) => {
-                        let debug: Value = from_str(&s)?;
-                        println!("{:#?}", debug);
-                        from_str(&s)?
-                    }
-                    Message::Close(_) => {
-                        self.closed = true;
-                        println!("链接已关闭");
-                        return Ok(());
-                    }
-                    _ => unreachable!("{:#?}", ss),
-                }
+    pub async fn next(&mut self) -> Option<Result<Message, Error>> {
+        self.wss.next().await
+    }
+    pub async fn dispatch(&mut self, event: Result<Message, Error>) -> AckermanResult {
+        let received: QQBotOperation = match event? {
+            Message::Text(s) => {
+                let json: Value = from_str(&s)?;
+                println!("{:#?}", json);
+                from_str(&s)?
             }
-            None => return Ok(()),
+            Message::Close(_) => {
+                self.closed = true;
+                println!("链接已关闭");
+                return Ok(());
+            }
+            _ => unreachable!(),
         };
         println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
         match received.op {
             0 => match received.d {
-                QQBotOperationUnion::Dispatch(v) => {
-                    println!("    鉴权成功, 登陆为 {:?}", v.user.username);
+                EventDispatcher::Dispatch(v) => {
+                    println!("    鉴权成功, 登陆为 {:?}", v);
                 }
-                QQBotOperationUnion::Boolean(v) => {
-                    unreachable!("{:?}", v)
-                }
-                QQBotOperationUnion::Integer(v) => {
-                    unreachable!("{:?}", v)
-                }
-                QQBotOperationUnion::Message(msg) => {
+                EventDispatcher::Message(msg) => {
                     println!("收到消息 {:#?}", msg);
                 }
+                EventDispatcher::ReadyEvent(msg) => {
+                    println!("    鉴权成功, 登陆为 {:?}", msg.user.username);
+                }
+                _ => unreachable!(),
             },
             9 => {
                 println!("    鉴权参数有误");
             }
             10 => {
                 self.heartbeat_id = received.s;
-                self.heartbeat_interval = received.dispatched().heartbeat_interval;
+                match received.d {
+                    EventDispatcher::HeartbeatEvent(time) => {
+                        self.heartbeat_interval = time.heartbeat_interval;
+                    }
+                    _ => unreachable!(),
+                }
+
                 println!("    重设心跳间隔为 {}", self.heartbeat_interval);
             }
             // 接收到心跳包
@@ -201,7 +184,7 @@ impl QQBotWebsocket {
             op: 1,
             s: 0,
             t: "".to_string(),
-            d: QQBotOperationUnion::Integer(self.heartbeat_id),
+            d: EventDispatcher::Integer(self.heartbeat_id),
             id: "".to_string(),
         };
         self.wss.send(Message::Text(to_string(&protocol)?)).await?;
@@ -215,7 +198,7 @@ impl QQBotWebsocket {
             op: 2,
             s: 0,
             t: "".to_string(),
-            d: QQBotOperationUnion::Dispatch(QQBotOperationDispatch {
+            d: EventDispatcher::Dispatch(QQBotOperationDispatch {
                 token: self.key.bot_token(),
                 intents,
                 shard: vec![0, 1],
