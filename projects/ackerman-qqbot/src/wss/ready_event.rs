@@ -8,7 +8,7 @@ pub struct User1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ReadyEvent {
+pub struct LoginEvent {
     pub version: i64,
     pub session_id: String,
     pub user: User1,

@@ -20,7 +20,7 @@ async fn main() -> AckermanResult {
             listen = wss.next() => {
                 match listen {
                     Some(event) =>{
-                        wss.dispatch(event)?;
+                        wss.dispatch(event).await?;
                     }
                     None => {
                         break

@@ -19,7 +19,7 @@ use url::Url;
 
 use crate::{AckermanResult, QQBotSecret};
 
-pub use self::{heartbeat_event::HeartbeatEvent, message_event::MessageEvent, ready_event::ReadyEvent};
+pub use self::{heartbeat_event::HeartbeatEvent, message_event::MessageEvent, ready_event::LoginEvent};
 
 mod heartbeat_event;
 mod message_event;
@@ -75,7 +75,7 @@ pub enum EventDispatcher {
     Message(MessageEvent),
     Dispatch(QQBotOperationDispatch),
     HeartbeatEvent(HeartbeatEvent),
-    ReadyEvent(ReadyEvent),
+    LoginReadyEvent(LoginEvent),
     MaybeFail(bool),
     Integer(u32),
 }
@@ -126,11 +126,14 @@ impl QQBotWebsocket {
     }
     pub async fn dispatch(&mut self, event: Result<Message, Error>) -> AckermanResult {
         let received: QQBotOperation = match event? {
-            Message::Text(s) => {
-                let json: Value = from_str(&s)?;
-                println!("{:#?}", json);
-                from_str(&s)?
-            }
+            Message::Text(s) => match from_str(&s) {
+                Ok(o) => o,
+                Err(e) => {
+                    let json: Value = from_str(&s)?;
+                    print!("未知错误 {:#?}", e);
+                    panic!("{:#?}", json);
+                }
+            },
             Message::Close(_) => {
                 self.closed = true;
                 println!("链接已关闭");
@@ -138,24 +141,24 @@ impl QQBotWebsocket {
             }
             _ => unreachable!(),
         };
-        println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
-        match received.op {
+        let mut bot = MyBot {};
+        let reply = match received.op {
             0 => match received.d {
                 EventDispatcher::Dispatch(v) => {
                     println!("    鉴权成功, 登陆为 {:?}", v);
+                    None
                 }
-                EventDispatcher::Message(msg) => {
-                    println!("收到消息 {:#?}", msg);
-                }
-                EventDispatcher::ReadyEvent(msg) => {
-                    println!("    鉴权成功, 登陆为 {:?}", msg.user.username);
-                }
+                EventDispatcher::Message(msg) => bot.on_message(msg),
+                EventDispatcher::LoginReadyEvent(msg) => bot.on_login(msg),
                 _ => unreachable!(),
             },
             9 => {
+                println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
                 println!("    鉴权参数有误");
+                None
             }
             10 => {
+                println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
                 self.heartbeat_id = received.s;
                 match received.d {
                     EventDispatcher::HeartbeatEvent(time) => {
@@ -165,16 +168,24 @@ impl QQBotWebsocket {
                 }
 
                 println!("    重设心跳间隔为 {}", self.heartbeat_interval);
+                None
             }
-            // 接收到心跳包
-            11 => {
-                self.heartbeat_id = received.s;
-                println!("    接受心跳包 {}", self.heartbeat_id);
-            }
+            // 接收到心跳包, 无参数
+            11 => None,
             _ => {
+                println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
                 println!("未知协议 {:#?}", received);
+                None
             }
+        };
+        match reply {
+            Some(s) => self.send(&s).await?,
+            None => {}
         }
+        Ok(())
+    }
+    pub async fn send(&mut self, operator: &QQBotOperation) -> AckermanResult<()> {
+        self.wss.send(Message::Text(to_string(&operator)?)).await?;
         Ok(())
     }
     pub async fn send_heartbeat(&mut self) -> AckermanResult<()> {
@@ -186,7 +197,7 @@ impl QQBotWebsocket {
             d: EventDispatcher::Integer(self.heartbeat_id),
             id: "".to_string(),
         };
-        self.wss.send(Message::Text(to_string(&protocol)?)).await?;
+        self.send(&protocol).await?;
         println!("    发送心跳包 {}", self.heartbeat_id);
         Ok(())
     }
@@ -208,6 +219,30 @@ impl QQBotWebsocket {
         self.wss.send(Message::Text(to_string(&protocol)?)).await?;
         println!("    首次连接鉴权");
         println!("    监听掩码 {:0X}", intents);
+        Ok(())
+    }
+}
+
+pub struct MyBot {}
+
+#[async_trait]
+#[allow(unused_variables)]
+pub trait QQBotProtocol {
+    async fn on_login(&mut self, event: LoginEvent) -> AckermanResult {
+        println!("    登录成功, 登陆为 {:?}", event.user.username);
+        Ok(())
+    }
+    async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
+        println!("    收到消息, 发送者为 {:?}", event.author.username);
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl QQBotProtocol for MyBot {
+    async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
+        // event.content
+        println!("收到消息 {:#?}", event);
         Ok(())
     }
 }
