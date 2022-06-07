@@ -1,10 +1,10 @@
 use super::*;
 
-use reqwest::{Method};
+use reqwest::Method;
 
 use std::str::FromStr;
-use toml::{Value};
-use url::{Url};
+use toml::Value;
+use url::Url;
 
 /// `GET /channels/{channel_id}/messages/{message_id}`
 ///
@@ -15,7 +15,7 @@ pub struct GetMessageListResponse {
 }
 
 impl GetMessageListResponse {
-    pub fn end_point(key: &QQBotSecret) -> String {
+    pub fn end_point(key: &QQSecret) -> String {
         if cfg!(debug_assertions) {
             format!(
                 "https://sandbox.api.sgroup.qq.com/channels/{channel_id}/messages",
@@ -31,7 +31,7 @@ impl GetMessageListResponse {
             )
         }
     }
-    pub async fn send(key: &QQBotSecret) -> AckermanResult<Self> {
+    pub async fn send(key: &QQSecret) -> AckermanResult<Self> {
         let url = Url::from_str(&Self::end_point(key))?;
         let response = key.as_request(Method::GET, url).send().await?;
         if response.status().as_u16() > 300 {

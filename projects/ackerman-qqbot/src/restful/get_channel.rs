@@ -12,7 +12,7 @@ pub struct GetChannelListResponse {
 }
 
 impl GetChannelListResponse {
-    pub fn end_point(key: &QQBotSecret) -> String {
+    pub fn end_point(key: &QQSecret) -> String {
         if cfg!(debug_assertions) {
             format!("https://sandbox.api.sgroup.qq.com/guilds/{guild_id}/channels", guild_id = key.guild_id())
         }
@@ -21,7 +21,7 @@ impl GetChannelListResponse {
         }
     }
 
-    pub async fn send(key: &QQBotSecret) -> AckermanResult<Self> {
+    pub async fn send(key: &QQSecret) -> AckermanResult<Self> {
         let url = Url::from_str(&Self::end_point(key))?;
         let response = key.as_request(Method::GET, url).send().await?;
         let out: Vec<ChannelItem> = response.json().await?;

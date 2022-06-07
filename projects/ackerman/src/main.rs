@@ -6,12 +6,12 @@ use tokio_tungstenite::tungstenite::{Error, Message};
 
 use ackerman_qq::{
     restful::{GetChannelListResponse, GetGuildListResponse},
-    AckermanResult, QQBotSecret, QQBotWebsocket,
+    AckermanResult, QQBotWebsocket, QQSecret,
 };
 
 #[tokio::main]
 async fn main() -> AckermanResult {
-    let key = QQBotSecret::load("key.toml")?;
+    let key = QQSecret::load("key.toml")?;
     let mut wss = QQBotWebsocket::link(&key).await?;
     let mut heartbeat = interval(Duration::from_secs_f32(30.0));
     wss.send_identify().await?;

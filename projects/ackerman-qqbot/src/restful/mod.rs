@@ -13,4 +13,4 @@ mod get_message;
 mod secret_key;
 mod send_message;
 
-pub use self::{get_channel::GetChannelListResponse, get_guild::GetGuildListResponse, secret_key::QQBotSecret};
+pub use self::{get_channel::GetChannelListResponse, get_guild::GetGuildListResponse, secret_key::QQSecret};

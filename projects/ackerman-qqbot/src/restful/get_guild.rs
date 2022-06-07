@@ -1,10 +1,10 @@
 use super::*;
 
-use reqwest::{Method};
+use reqwest::Method;
 
 use std::str::FromStr;
 
-use url::{Url};
+use url::Url;
 
 /// `GET /users/@me/guilds`
 ///
@@ -23,7 +23,7 @@ impl GetGuildListResponse {
             format!("https://api.sgroup.qq.com/users/@me/guilds")
         }
     }
-    pub async fn send(key: &QQBotSecret) -> AckermanResult<Self> {
+    pub async fn send(key: &QQSecret) -> AckermanResult<Self> {
         let url = Url::from_str(&Self::end_point())?;
         let response = key.as_request(Method::GET, url).send().await?;
         Ok(Self { items: response.json().await? })

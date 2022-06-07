@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::{
     fmt::{Debug, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -17,7 +18,7 @@ use tokio_tungstenite::{
 };
 use url::Url;
 
-use crate::{AckermanResult, QQBotSecret};
+use crate::{AckermanResult, QQSecret};
 
 pub use self::{heartbeat_event::HeartbeatEvent, message_event::MessageEvent, ready_event::LoginEvent};
 
@@ -26,12 +27,11 @@ mod message_event;
 mod ready_event;
 
 pub struct QQBotWebsocket {
-    pub wss: WebSocketStream<MaybeTlsStream<TcpStream>>,
-    key: QQBotSecret,
+    wss: WebSocketStream<MaybeTlsStream<TcpStream>>,
+    bot: Box<dyn QQBotProtocol>,
     connected: QQBotConnected,
-    pub closed: bool,
-    pub heartbeat_interval: u64,
-    pub heartbeat_id: u32,
+    heartbeat_id: u64,
+    closed: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -115,11 +115,12 @@ impl Debug for QQBotWebsocket {
 }
 
 impl QQBotWebsocket {
-    pub async fn link(key: &QQBotSecret) -> AckermanResult<Self> {
+    pub async fn link(key: &QQSecret) -> AckermanResult<Self> {
         let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
-        let value: QQBotConnected = key.as_request(Method::GET, url).send().await?.json().await?;
-        let (wss, _) = connect_async(&value.url).await?;
-        Ok(Self { wss, key: key.clone(), connected: value, closed: false, heartbeat_interval: 40000, heartbeat_id: 0 })
+        let connected: QQBotConnected = key.as_request(Method::GET, url).send().await?.json().await?;
+        let (wss, _) = connect_async(&connected.url).await?;
+        let bot = SimpleBot { heartbeat_interval: 40000, heartbeat_id: 0, secret: key.clone() };
+        Ok(Self { wss, bot: Box::new(bot), connected, heartbeat_id: 0, closed: false })
     }
     pub async fn next(&mut self) -> Option<Result<Message, Error>> {
         self.wss.next().await
@@ -141,47 +142,32 @@ impl QQBotWebsocket {
             }
             _ => unreachable!(),
         };
-        let mut bot = MyBot {};
-        let reply = match received.op {
+        match received.op {
             0 => match received.d {
                 EventDispatcher::Dispatch(v) => {
                     println!("    鉴权成功, 登陆为 {:?}", v);
-                    None
                 }
-                EventDispatcher::Message(msg) => bot.on_message(msg),
-                EventDispatcher::LoginReadyEvent(msg) => bot.on_login(msg),
+                EventDispatcher::Message(msg) => self.bot.on_message(msg).await?,
+                EventDispatcher::LoginReadyEvent(msg) => self.bot.on_login_success(msg).await?,
                 _ => unreachable!(),
             },
-            9 => {
-                println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
-                println!("    鉴权参数有误");
-                None
-            }
-            10 => {
-                println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
-                self.heartbeat_id = received.s;
-                match received.d {
-                    EventDispatcher::HeartbeatEvent(time) => {
-                        self.heartbeat_interval = time.heartbeat_interval;
-                    }
-                    _ => unreachable!(),
+            9 => self.bot.on_login_failure().await?,
+            10 => match received.d {
+                EventDispatcher::HeartbeatEvent(time) => {
+                    self.bot.on_connected(time).await?;
+                    self.heartbeat_id = received.s;
+                    // self.heartbeat_interval = time.heartbeat_interval;
+                    println!("    重设心跳间隔为 {}", self.heartbeat_interval);
                 }
-
-                println!("    重设心跳间隔为 {}", self.heartbeat_interval);
-                None
-            }
+                _ => unreachable!(),
+            },
             // 接收到心跳包, 无参数
-            11 => None,
+            11 => {}
             _ => {
                 println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), received.op);
                 println!("未知协议 {:#?}", received);
-                None
             }
         };
-        match reply {
-            Some(s) => self.send(&s).await?,
-            None => {}
-        }
         Ok(())
     }
     pub async fn send(&mut self, operator: &QQBotOperation) -> AckermanResult<()> {
@@ -209,7 +195,7 @@ impl QQBotWebsocket {
             s: 0,
             t: "".to_string(),
             d: EventDispatcher::Dispatch(QQBotOperationDispatch {
-                token: self.key.bot_token(),
+                token: self.bot.bot_token(),
                 intents,
                 shard: vec![0, 1],
                 ..Default::default()
@@ -223,23 +209,41 @@ impl QQBotWebsocket {
     }
 }
 
-pub struct MyBot {}
+pub struct SimpleBot {
+    pub heartbeat_interval: u64,
+    pub secret: QQSecret,
+}
 
 #[async_trait]
 #[allow(unused_variables)]
 pub trait QQBotProtocol {
-    async fn on_login(&mut self, event: LoginEvent) -> AckermanResult {
+    async fn on_connected(&mut self, event: HeartbeatEvent) -> AckermanResult {
+        println!("[{}] 协议 10", Utc::now().format("%F %H:%M:%S"));
+        println!("    已连接");
+        Ok(())
+    }
+    async fn on_login_success(&mut self, event: LoginEvent) -> AckermanResult {
+        println!("[{}] 协议 9", Utc::now().format("%F %H:%M:%S"));
         println!("    登录成功, 登陆为 {:?}", event.user.username);
         Ok(())
     }
+    async fn on_login_failure(&mut self) -> AckermanResult {
+        println!("[{}] 协议 9", Utc::now().format("%F %H:%M:%S"));
+        println!("    鉴权参数有误");
+        Ok(())
+    }
     async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
+        println!("[{}] 协议 0", Utc::now().format("%F %H:%M:%S"));
         println!("    收到消息, 发送者为 {:?}", event.author.username);
         Ok(())
     }
 }
 
-#[async_trait]
-impl QQBotProtocol for MyBot {
+impl QQBotProtocol for SimpleBot {
+    async fn on_connected(&mut self, event: HeartbeatEvent) -> AckermanResult {
+        self.heartbeat_interval = event.heartbeat_interval;
+        Ok(())
+    }
     async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
         // event.content
         println!("收到消息 {:#?}", event);
