@@ -1,13 +1,13 @@
-use async_trait::async_trait;
 use std::{
     fmt::{Debug, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
 };
 
+use async_trait::async_trait;
 use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
-use reqwest::Method;
+use reqwest::{Method, RequestBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string, Value};
 use tokio::net::TcpStream;
@@ -26,11 +26,14 @@ mod heartbeat_event;
 mod message_event;
 mod ready_event;
 
-pub struct QQBotWebsocket {
+pub struct QQBotWebsocket<T>
+where
+    T: QQBotProtocol,
+{
+    bot: T,
     wss: WebSocketStream<MaybeTlsStream<TcpStream>>,
-    bot: Box<dyn QQBotProtocol>,
     connected: QQBotConnected,
-    heartbeat_id: u64,
+    heartbeat_id: u32,
     closed: bool,
 }
 
@@ -99,7 +102,10 @@ impl Default for QQBotOperationDispatch {
     }
 }
 
-impl Debug for QQBotWebsocket {
+impl<T> Debug for QQBotWebsocket<T>
+where
+    T: QQBotProtocol,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let tcp_stream = match self.wss.get_ref() {
             MaybeTlsStream::Plain(s) => s.peer_addr().unwrap(),
@@ -114,13 +120,16 @@ impl Debug for QQBotWebsocket {
     }
 }
 
-impl QQBotWebsocket {
-    pub async fn link(key: &QQSecret) -> AckermanResult<Self> {
+impl<T> QQBotWebsocket<T>
+where
+    T: QQBotProtocol,
+{
+    pub async fn link(bot: T) -> AckermanResult<Self> {
         let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
-        let connected: QQBotConnected = key.as_request(Method::GET, url).send().await?.json().await?;
+        let request = bot.build_request(Method::GET, url);
+        let connected: QQBotConnected = request.send().await?.json().await?;
         let (wss, _) = connect_async(&connected.url).await?;
-        let bot = SimpleBot { heartbeat_interval: 40000, heartbeat_id: 0, secret: key.clone() };
-        Ok(Self { wss, bot: Box::new(bot), connected, heartbeat_id: 0, closed: false })
+        Ok(Self { wss, bot, connected, heartbeat_id: 0, closed: false })
     }
     pub async fn next(&mut self) -> Option<Result<Message, Error>> {
         self.wss.next().await
@@ -154,10 +163,8 @@ impl QQBotWebsocket {
             9 => self.bot.on_login_failure().await?,
             10 => match received.d {
                 EventDispatcher::HeartbeatEvent(time) => {
-                    self.bot.on_connected(time).await?;
                     self.heartbeat_id = received.s;
-                    // self.heartbeat_interval = time.heartbeat_interval;
-                    println!("    重设心跳间隔为 {}", self.heartbeat_interval);
+                    self.bot.on_connected(time).await?;
                 }
                 _ => unreachable!(),
             },
@@ -175,16 +182,15 @@ impl QQBotWebsocket {
         Ok(())
     }
     pub async fn send_heartbeat(&mut self) -> AckermanResult<()> {
-        println!("[{}] 协议 1", Utc::now().format("%F %H:%M:%S"));
         let protocol = QQBotOperation {
             op: 1,
+            d: EventDispatcher::Integer(self.heartbeat_id),
             s: 0,
             t: "".to_string(),
-            d: EventDispatcher::Integer(self.heartbeat_id),
             id: "".to_string(),
         };
         self.send(&protocol).await?;
-        println!("    发送心跳包 {}", self.heartbeat_id);
+        self.bot.on_heartbeat(self.heartbeat_id).await?;
         Ok(())
     }
     pub async fn send_identify(&mut self) -> AckermanResult<()> {
@@ -195,7 +201,7 @@ impl QQBotWebsocket {
             s: 0,
             t: "".to_string(),
             d: EventDispatcher::Dispatch(QQBotOperationDispatch {
-                token: self.bot.bot_token(),
+                token: self.bot.build_bot_token(),
                 intents,
                 shard: vec![0, 1],
                 ..Default::default()
@@ -213,10 +219,11 @@ pub struct SimpleBot {
     pub heartbeat_interval: u64,
     pub secret: QQSecret,
 }
-
 #[async_trait]
 #[allow(unused_variables)]
-pub trait QQBotProtocol {
+pub trait QQBotProtocol: Send {
+    fn build_bot_token(&self) -> String;
+    fn build_request(&self, method: Method, url: Url) -> RequestBuilder;
     async fn on_connected(&mut self, event: HeartbeatEvent) -> AckermanResult {
         println!("[{}] 协议 10", Utc::now().format("%F %H:%M:%S"));
         println!("    已连接");
@@ -232,6 +239,11 @@ pub trait QQBotProtocol {
         println!("    鉴权参数有误");
         Ok(())
     }
+    async fn on_heartbeat(&mut self, heartbeat_id: u32) -> AckermanResult {
+        println!("[{}] 协议 1", Utc::now().format("%F %H:%M:%S"));
+        println!("    发送心跳包 {}", heartbeat_id);
+        Ok(())
+    }
     async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
         println!("[{}] 协议 0", Utc::now().format("%F %H:%M:%S"));
         println!("    收到消息, 发送者为 {:?}", event.author.username);
@@ -239,7 +251,14 @@ pub trait QQBotProtocol {
     }
 }
 
+#[async_trait]
 impl QQBotProtocol for SimpleBot {
+    fn build_bot_token(&self) -> String {
+        self.secret.bot_token()
+    }
+    fn build_request(&self, method: Method, url: Url) -> RequestBuilder {
+        self.secret.as_request(method, url)
+    }
     async fn on_connected(&mut self, event: HeartbeatEvent) -> AckermanResult {
         self.heartbeat_interval = event.heartbeat_interval;
         Ok(())

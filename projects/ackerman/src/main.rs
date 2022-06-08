@@ -12,6 +12,8 @@ use ackerman_qq::{
 #[tokio::main]
 async fn main() -> AckermanResult {
     let key = QQSecret::load("key.toml")?;
+    let bot =
+
     let mut wss = QQBotWebsocket::link(&key).await?;
     let mut heartbeat = interval(Duration::from_secs_f32(30.0));
     wss.send_identify().await?;
