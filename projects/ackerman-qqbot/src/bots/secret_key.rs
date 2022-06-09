@@ -1,25 +1,8 @@
 use super::*;
-use reqwest::{Method, RequestBuilder};
-use url::Url;
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct QQSecret {
-    bot_app_id: u64,
-    bot_secret: String,
-    bot_token: String,
-    test: ChannelIds,
-    deploy: ChannelIds,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct ChannelIds {
-    guild_id: u64,
-    channel_id: u64,
-}
 
 impl QQSecret {
-    pub fn load(path: impl AsRef<Path>) -> AckermanResult<Self> {
-        Ok(from_str(&read_to_string(path)?)?)
+    pub fn load_toml(path: impl AsRef<Path>) -> AckermanResult<Self> {
+        Ok(toml::from_str(&read_to_string(path)?)?)
     }
     pub fn channel_id(&self) -> u64 {
         if cfg!(debug_assertions) { self.test.channel_id } else { self.deploy.channel_id }

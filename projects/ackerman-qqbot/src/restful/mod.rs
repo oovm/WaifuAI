@@ -10,7 +10,6 @@ use toml::from_str;
 mod get_channel;
 mod get_guild;
 mod get_message;
-mod secret_key;
 mod send_message;
 
-pub use self::{get_channel::GetChannelListResponse, get_guild::GetGuildListResponse, secret_key::QQSecret};
+pub use self::{get_channel::GetChannelListResponse, get_guild::GetGuildListResponse};

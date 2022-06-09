@@ -1,10 +1,10 @@
 [package]
-name = "ackerman-qq"
-version = "0.1.2"
+name = "qq-bot"
+version = "0.0.0"
 authors = ["Aster <192607617@qq.com>"]
 description = "..."
 repository = "https://github.com/oovm/Ackerman"
-documentation = "https://docs.rs/Ackerman"
+documentation = "https://docs.rs/qq-bot"
 readme = "Readme.md"
 license = "MPL-2.0"
 edition = "2021"

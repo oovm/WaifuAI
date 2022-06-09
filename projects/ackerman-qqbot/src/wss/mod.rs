@@ -1,15 +1,15 @@
-use std::{
-    fmt::{Debug, Formatter},
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    str::FromStr,
-};
-
+use crate::QQBotProtocol;
 use async_trait::async_trait;
 use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::{Method, RequestBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string, Value};
+use std::{
+    fmt::{Debug, Formatter},
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    str::FromStr,
+};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     connect_async,
@@ -34,7 +34,7 @@ where
     wss: WebSocketStream<MaybeTlsStream<TcpStream>>,
     connected: QQBotConnected,
     heartbeat_id: u32,
-    closed: bool,
+    pub closed: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -211,61 +211,6 @@ where
         self.wss.send(Message::Text(to_string(&protocol)?)).await?;
         println!("    首次连接鉴权");
         println!("    监听掩码 {:0X}", intents);
-        Ok(())
-    }
-}
-
-pub struct SimpleBot {
-    pub heartbeat_interval: u64,
-    pub secret: QQSecret,
-}
-#[async_trait]
-#[allow(unused_variables)]
-pub trait QQBotProtocol: Send {
-    fn build_bot_token(&self) -> String;
-    fn build_request(&self, method: Method, url: Url) -> RequestBuilder;
-    async fn on_connected(&mut self, event: HeartbeatEvent) -> AckermanResult {
-        println!("[{}] 协议 10", Utc::now().format("%F %H:%M:%S"));
-        println!("    已连接");
-        Ok(())
-    }
-    async fn on_login_success(&mut self, event: LoginEvent) -> AckermanResult {
-        println!("[{}] 协议 9", Utc::now().format("%F %H:%M:%S"));
-        println!("    登录成功, 登陆为 {:?}", event.user.username);
-        Ok(())
-    }
-    async fn on_login_failure(&mut self) -> AckermanResult {
-        println!("[{}] 协议 9", Utc::now().format("%F %H:%M:%S"));
-        println!("    鉴权参数有误");
-        Ok(())
-    }
-    async fn on_heartbeat(&mut self, heartbeat_id: u32) -> AckermanResult {
-        println!("[{}] 协议 1", Utc::now().format("%F %H:%M:%S"));
-        println!("    发送心跳包 {}", heartbeat_id);
-        Ok(())
-    }
-    async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
-        println!("[{}] 协议 0", Utc::now().format("%F %H:%M:%S"));
-        println!("    收到消息, 发送者为 {:?}", event.author.username);
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl QQBotProtocol for SimpleBot {
-    fn build_bot_token(&self) -> String {
-        self.secret.bot_token()
-    }
-    fn build_request(&self, method: Method, url: Url) -> RequestBuilder {
-        self.secret.as_request(method, url)
-    }
-    async fn on_connected(&mut self, event: HeartbeatEvent) -> AckermanResult {
-        self.heartbeat_interval = event.heartbeat_interval;
-        Ok(())
-    }
-    async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
-        // event.content
-        println!("收到消息 {:#?}", event);
         Ok(())
     }
 }

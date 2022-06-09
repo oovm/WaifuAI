@@ -1,4 +1,5 @@
 use super::*;
+use crate::QQSecret;
 use reqwest::Method;
 use std::str::FromStr;
 use url::Url;

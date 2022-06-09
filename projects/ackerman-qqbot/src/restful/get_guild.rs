@@ -2,8 +2,8 @@ use super::*;
 
 use reqwest::Method;
 
+use crate::QQSecret;
 use std::str::FromStr;
-
 use url::Url;
 
 /// `GET /users/@me/guilds`

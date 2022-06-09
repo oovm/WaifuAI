@@ -2,6 +2,7 @@ use super::*;
 
 use reqwest::Method;
 
+use crate::QQSecret;
 use std::str::FromStr;
 use toml::Value;
 use url::Url;
