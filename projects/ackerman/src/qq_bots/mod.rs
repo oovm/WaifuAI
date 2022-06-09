@@ -3,22 +3,18 @@ use std::collections::BTreeMap;
 use async_trait::async_trait;
 use tokio_tungstenite::tungstenite::http::Method;
 
-use qq_bot::{wss::MessageEvent, AckermanResult, QQBotProtocol, QQSecret, RequestBuilder, Url};
+use qq_bot::{
+    restful::SendMessageRequest,
+    wss::{MessageAttachment, MessageEvent},
+    AckermanResult, QQBotProtocol, QQSecret, RequestBuilder, Url,
+};
+
+pub use self::image_request::NovelAIRequest;
+
+mod image_request;
 
 pub struct AckermanQQBot {
     pub secret: QQSecret,
-}
-const BAN_WORDS: &'static [&'static str] = &["nsfw"];
-
-pub struct ImageRequest {
-    tags: Vec<String>,
-    aspect_ratio: f32,
-}
-
-impl Default for ImageRequest {
-    fn default() -> Self {
-        Self { tags: vec![], aspect_ratio: 0.0 }
-    }
 }
 
 impl AckermanQQBot {
@@ -27,38 +23,40 @@ impl AckermanQQBot {
         println!("收到消息 {:#?}", event);
         Ok(())
     }
-    pub fn waifu_image_request(&mut self, rest: &str) -> AckermanResult<ImageRequest> {
-        let mut image = ImageRequest::default();
+    pub fn waifu_image_request(&mut self, rest: &str) -> AckermanResult<NovelAIRequest> {
+        let mut image = NovelAIRequest::default();
         let mut dict = BTreeMap::default();
         for line in include_str!("dict.txt").lines() {
-            match line.split_once(",") {
-                None => {}
-                Some((cn, en)) => dict.insert(cn.trim().to_string(), en.trim().to_string()),
+            if let Some((cn, en)) = line.split_once(",") {
+                dict.insert(cn.trim().to_string(), en.trim().to_string());
             }
         }
         for tag in rest.split(|c| c == ',' || c == '，') {
             let tag = tag.trim().to_ascii_lowercase();
-            if !BAN_WORDS.contains(&&*tag) {
-                match tag.as_str() {
-                    "横" | "w" => image.aspect_ratio = 2.0,
-                    "竖" | "h" => image.aspect_ratio = 0.5,
-                    "方" | "s" => image.aspect_ratio = 1.0,
-                    _ => match dict.get(&tag) {
-                        Some(normed) => {
-                            if !normed.is_empty() {
-                                image.tags.push(normed.to_string());
-                            }
+            match tag.as_str() {
+                "横" | "w" | "portrait" => image.aspect_ratio = 2.0,
+                "竖" | "h" | "landscape" => image.aspect_ratio = 0.5,
+                "方" | "s" | "square" => image.aspect_ratio = 1.0,
+                s if s.starts_with("质量") => {}
+                s if s.starts_with("s") => {}
+                s if s.starts_with("step") => {}
+                s if s.starts_with("steps") => {}
+                s if s.starts_with("步数") => {}
+                _ => match dict.get(&tag) {
+                    Some(normed) => {
+                        if !normed.is_empty() {
+                            image.add_tag(normed);
                         }
-                        None => {
-                            if tag.is_ascii() {
-                                image.tags.push(tag);
-                            }
-                            else {
-                                println!("未知 tag: {}", tag)
-                            }
+                    }
+                    None => {
+                        if tag.is_ascii() {
+                            image.add_tag(&tag);
                         }
-                    },
-                }
+                        else {
+                            println!("未知 tag: {}", tag)
+                        }
+                    }
+                },
             }
         }
         Ok(image)
@@ -85,11 +83,28 @@ impl QQBotProtocol for AckermanQQBot {
                 Ok(())
             }
             s if s.starts_with("。waifu") => {
-                let image = self.waifu_image_request(&s["。waifu".len()..s.len()])?;
+                let tags = self.waifu_image_request(&s["。waifu".len()..s.len()])?;
+                if !tags.is_empty() {
+                    println!("{event:#?}");
+                    match event.attachments.first() {
+                        None => {}
+                        Some(s) => s.url,
+                    }
+
+                    let req = SendMessageRequest {
+                        msg_id: event.id,
+                        content: format!("{:#?}", tags),
+                        image: event.attachments.first().cloned(),
+                    };
+                    req.send(self, event.channel_id, event.author.id).await?;
+                }
+                else {
+                    println!("    waifu 空请求");
+                }
                 Ok(())
             }
             _ => {
-                println!("收到消息 {:#?}", event);
+                println!("    常规消息 {:#?}", event.content);
                 Ok(())
             }
         }
