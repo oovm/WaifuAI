@@ -1,13 +1,18 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    fs::File,
+    path::{Path, PathBuf},
+};
 
 use async_trait::async_trait;
-use tokio_tungstenite::tungstenite::http::Method;
-
+use formdata::{FilePart, FormData};
+use hyper::header::Headers;
 use qq_bot::{
     restful::SendMessageRequest,
     wss::{MessageAttachment, MessageEvent},
     AckermanResult, QQBotProtocol, QQSecret, RequestBuilder, Url,
 };
+use tokio_tungstenite::tungstenite::http::Method;
 
 pub use self::image_request::NovelAIRequest;
 
@@ -19,8 +24,7 @@ pub struct AckermanQQBot {
 
 impl AckermanQQBot {
     async fn on_normal_message(&mut self, event: MessageEvent) -> AckermanResult {
-        // event.content
-        println!("收到消息 {:#?}", event);
+        println!("    常规消息 {:#?}", event.content);
         Ok(())
     }
     pub fn waifu_image_request(&mut self, rest: &str) -> AckermanResult<NovelAIRequest> {
@@ -85,17 +89,32 @@ impl QQBotProtocol for AckermanQQBot {
             s if s.starts_with("。waifu") => {
                 let tags = self.waifu_image_request(&s["。waifu".len()..s.len()])?;
                 if !tags.is_empty() {
-                    println!("{event:#?}");
                     match event.attachments.first() {
                         None => {}
-                        Some(s) => s.url,
+                        Some(s) => {
+                            let path = PathBuf::from("target/tmp");
+                            s.download(&path).await?
+                        }
                     }
 
-                    let req = SendMessageRequest {
-                        msg_id: event.id,
-                        content: format!("{:#?}", tags),
-                        image: event.attachments.first().cloned(),
+                    let formdata = FormData {
+                        fields: vec![],
+                        files: vec![(
+                            "photo".to_owned(),
+                            FilePart::new(
+                                Headers::new(),
+                                Path::new("/target/tmp/{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg..jpeg"),
+                            ),
+                        )],
                     };
+                    let boundary = formdata::generate_boundary();
+                    let mut stream = String::new();
+                    let mut temp = File::create("/target/tmp/multi")?;
+
+                    formdata::write_formdata(&mut temp, &boundary, &formdata).unwrap();
+                    println!("{}", stream);
+
+                    let req = SendMessageRequest { msg_id: event.id, content: format!("{:#?}", tags), file_image: stream };
                     req.send(self, event.channel_id, event.author.id).await?;
                 }
                 else {
@@ -103,10 +122,7 @@ impl QQBotProtocol for AckermanQQBot {
                 }
                 Ok(())
             }
-            _ => {
-                println!("    常规消息 {:#?}", event.content);
-                Ok(())
-            }
+            _ => self.on_normal_message(event).await,
         }
     }
 }
