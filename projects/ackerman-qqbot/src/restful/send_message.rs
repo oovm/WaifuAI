@@ -1,7 +1,7 @@
 use multipart::Form;
 use reqwest::{multipart, multipart::Part};
 use std::path::PathBuf;
-use tokio::io::AsyncReadExt;
+use tokio::{fs::File, io::AsyncReadExt};
 
 use super::*;
 
@@ -13,8 +13,8 @@ pub struct SendMessageRequest {
     pub content: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub msg_id: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub file_image: String,
+    #[serde(skip_serializing)]
+    pub file_image: Option<PathBuf>,
 }
 
 impl SendMessageRequest {
@@ -26,19 +26,20 @@ impl SendMessageRequest {
             format!("https://api.sgroup.qq.com/channels/{channel_id}/messages",)
         }
     }
-    pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64, user_id: u64, path: &PathBuf) -> AckermanResult {
+    pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64, user_id: u64) -> AckermanResult {
         let url = Url::from_str(&Self::end_point(channel_id))?;
-        let mut file = tokio::fs::File::open(path).await?;
-        let mut bytes = vec![];
-        file.read_to_end(&mut bytes).await?;
-        let form = Form::new().part("photo", Part::bytes(bytes));
-        let response = bot
-            .build_request(Method::POST, url)
-            .header(CONTENT_TYPE, "multipart/form-data")
-            .body(format!("{}", to_string(self)?))
-            .multipart(form)
-            .send()
-            .await?;
+        let mut response = bot.build_request(Method::POST, url).body(format!("{}", to_string(self)?));
+        match &self.file_image {
+            Some(image_path) => {
+                let mut file = File::open(image_path).await?;
+                let mut bytes = vec![];
+                file.read_to_end(&mut bytes).await?;
+                let form = Form::new().part("photo", Part::bytes(bytes));
+                response = response.multipart(form)
+            }
+            None => {}
+        }
+        let response = response.send().await?;
         if response.status().as_u16() > 300 {
             println!("{}", response.status().as_u16())
         }

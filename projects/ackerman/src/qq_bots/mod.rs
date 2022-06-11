@@ -2,6 +2,7 @@ use std::{
     collections::BTreeMap,
     fs::File,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use async_trait::async_trait;
@@ -20,6 +21,7 @@ mod image_request;
 
 pub struct AckermanQQBot {
     pub secret: QQSecret,
+    pub here: PathBuf,
 }
 
 impl AckermanQQBot {
@@ -96,25 +98,11 @@ impl QQBotProtocol for AckermanQQBot {
                             s.download(&path).await?
                         }
                     }
-
-                    let formdata = FormData {
-                        fields: vec![],
-                        files: vec![(
-                            "photo".to_owned(),
-                            FilePart::new(
-                                Headers::new(),
-                                Path::new("/target/tmp/{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg..jpeg"),
-                            ),
-                        )],
-                    };
-                    let boundary = formdata::generate_boundary();
-                    let mut stream = String::new();
-                    let mut temp = File::create("/target/tmp/multi")?;
-
-                    formdata::write_formdata(&mut temp, &boundary, &formdata).unwrap();
-                    println!("{}", stream);
-
-                    let req = SendMessageRequest { msg_id: event.id, content: format!("{:#?}", tags), file_image: stream };
+                    println!("{:?}", std::env::current_dir().unwrap());
+                    let image_path = PathBuf::from_str("/target/tmp/{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg..jpeg").unwrap();
+                    println!("{}", image_path.exists());
+                    let req =
+                        SendMessageRequest { msg_id: event.id, content: format!("{:#?}", tags), file_image: Some(image_path) };
                     req.send(self, event.channel_id, event.author.id).await?;
                 }
                 else {
