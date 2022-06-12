@@ -70,7 +70,7 @@ pub trait QQBotProtocol: Send {
     }
     async fn on_emoji(&mut self, event: EmojiEvent) -> AckermanResult {
         println!("[{}] 协议 0", current_time());
-        println!("    发送表情 {:?}", event.emoji.id);
+        println!("    消息 {} 表情变动", event.target.id);
         Ok(())
     }
 }
