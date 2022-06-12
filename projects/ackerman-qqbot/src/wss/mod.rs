@@ -21,11 +21,13 @@ use url::Url;
 use crate::{AckermanResult, QQSecret};
 
 pub use self::{
+    emoji_event::EmojiEvent,
     heartbeat_event::HeartbeatEvent,
     message_event::{MessageAttachment, MessageEvent},
     ready_event::LoginEvent,
 };
 
+mod emoji_event;
 mod heartbeat_event;
 mod message_event;
 mod ready_event;
@@ -69,13 +71,6 @@ pub struct QQBotOperation {
     id: String,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-pub struct User {
-    pub id: String,
-    pub username: String,
-    pub bot: bool,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum EventDispatcher {
@@ -83,6 +78,7 @@ pub enum EventDispatcher {
     Dispatch(QQBotOperationDispatch),
     HeartbeatEvent(HeartbeatEvent),
     LoginReadyEvent(LoginEvent),
+    EmojiEvent(EmojiEvent),
     MaybeFail(bool),
     Integer(u32),
 }
@@ -171,6 +167,7 @@ where
                 }
                 EventDispatcher::Message(msg) => self.bot.on_message(msg).await?,
                 EventDispatcher::LoginReadyEvent(msg) => self.bot.on_login_success(msg).await?,
+                EventDispatcher::EmojiEvent(msg) => self.bot.on_emoji(msg).await?,
                 _ => unreachable!(),
             },
             // 要求重新链接

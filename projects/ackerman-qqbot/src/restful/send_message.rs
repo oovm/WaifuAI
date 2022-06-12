@@ -1,5 +1,6 @@
 use multipart::Form;
 use reqwest::{multipart, multipart::Part};
+use serde_json::Value;
 use std::path::PathBuf;
 use tokio::{fs::File, io::AsyncReadExt};
 
@@ -8,13 +9,12 @@ use super::*;
 /// `POST /channels/{channel_id}/messages`
 ///
 /// <https://bot.q.qq.com/wiki/develop/api/openapi/message/get_message_of_id.html>
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct SendMessageRequest {
     pub content: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
     pub msg_id: String,
-    #[serde(skip_serializing)]
-    pub file_image: Option<PathBuf>,
+    pub file_image: String,
+    pub image_path: PathBuf,
 }
 
 impl SendMessageRequest {
@@ -28,20 +28,18 @@ impl SendMessageRequest {
     }
     pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64, user_id: u64) -> AckermanResult {
         let url = Url::from_str(&Self::end_point(channel_id))?;
-        let mut response = bot.build_request(Method::POST, url).body(format!("{}", to_string(self)?));
-        match &self.file_image {
-            Some(image_path) => {
-                let mut file = File::open(image_path).await?;
-                let mut bytes = vec![];
-                file.read_to_end(&mut bytes).await?;
-                let form = Form::new().part("photo", Part::bytes(bytes));
-                response = response.multipart(form)
-            }
-            None => {}
-        }
-        let response = response.send().await?;
+
+        let mut file = File::open(&self.image_path).await?;
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).await?;
+        let mut image_part = Part::bytes(bytes).file_name("photo");
+        let form = Form::new()
+            .text("content", self.content.to_string())
+            .text("msg_id", self.msg_id.to_string())
+            .part("file_image", image_part);
+        let response = bot.build_request(Method::POST, url).multipart(form).send().await?;
         if response.status().as_u16() > 300 {
-            println!("{}", response.status().as_u16())
+            println!("{:#?}", response.json::<Value>().await?)
         }
         // let value: Value = response.json().await?;
         Ok(())
