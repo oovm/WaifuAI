@@ -1,7 +1,7 @@
 use super::*;
 
 impl QQSecret {
-    pub fn load_toml(path: impl AsRef<Path>) -> AckermanResult<Self> {
+    pub fn load_toml(path: impl AsRef<Path>) -> QQResult<Self> {
         Ok(toml::from_str(&read_to_string(path)?)?)
     }
     pub fn channel_id(&self) -> u64 {

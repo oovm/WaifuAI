@@ -26,7 +26,7 @@ impl SendMessageRequest {
             format!("https://api.sgroup.qq.com/channels/{channel_id}/messages",)
         }
     }
-    pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64, user_id: u64) -> AckermanResult {
+    pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64, user_id: u64) -> QQResult {
         let url = Url::from_str(&Self::end_point(channel_id))?;
 
         let mut file = File::open(&self.image_path).await?;

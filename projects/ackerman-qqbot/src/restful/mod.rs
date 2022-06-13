@@ -7,7 +7,7 @@ use url::Url;
 
 use num::Zero;
 
-use crate::{AckermanResult, QQBotProtocol, QQSecret};
+use crate::{QQBotProtocol, QQResult, QQSecret};
 
 pub use self::{get_channel::GetChannelListResponse, get_guild::GetGuildListResponse, send_message::SendMessageRequest};
 

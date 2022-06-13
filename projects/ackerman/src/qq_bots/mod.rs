@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fs, path::PathBuf};
 
 use async_trait::async_trait;
-use qq_bot::{restful::SendMessageRequest, wss::MessageEvent, AckermanResult, QQBotProtocol, QQSecret, RequestBuilder, Url};
+use qq_bot::{restful::SendMessageRequest, wss::MessageEvent, QQBotProtocol, QQResult, QQSecret, RequestBuilder, Url};
 use tokio_tungstenite::tungstenite::http::Method;
 
 pub use self::image_request::NovelAIRequest;
@@ -14,7 +14,7 @@ pub struct AckermanQQBot {
 }
 
 impl AckermanQQBot {
-    pub fn ensure_path(&self) -> AckermanResult {
+    pub fn ensure_path(&self) -> QQResult {
         if !self.target_dir().exists() {
             fs::create_dir(self.target_dir())?
         }
@@ -23,11 +23,11 @@ impl AckermanQQBot {
     pub fn target_dir(&self) -> PathBuf {
         self.here.join("target/ackerman/")
     }
-    async fn on_normal_message(&mut self, event: MessageEvent) -> AckermanResult {
+    async fn on_normal_message(&mut self, event: MessageEvent) -> QQResult {
         println!("    常规消息 {:#?}", event.content);
         Ok(())
     }
-    pub fn waifu_image_request(&mut self, rest: &str) -> AckermanResult<NovelAIRequest> {
+    pub fn waifu_image_request(&mut self, rest: &str) -> QQResult<NovelAIRequest> {
         let mut image = NovelAIRequest::default();
         let mut dict = BTreeMap::default();
         for line in include_str!("dict.txt").lines() {
@@ -75,7 +75,7 @@ impl QQBotProtocol for AckermanQQBot {
     fn build_request(&self, method: Method, url: Url) -> RequestBuilder {
         self.secret.as_request(method, url)
     }
-    async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
+    async fn on_message(&mut self, event: MessageEvent) -> QQResult {
         match event.content.as_str() {
             s if s.starts_with("waifu") => {
                 let tags = self.waifu_image_request(&s["waifu".len()..s.len()])?;

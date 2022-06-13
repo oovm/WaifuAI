@@ -18,7 +18,7 @@ impl GetChannelListResponse {
         }
     }
 
-    pub async fn send(key: &QQSecret) -> AckermanResult<Self> {
+    pub async fn send(key: &QQSecret) -> QQResult<Self> {
         let url = Url::from_str(&Self::end_point(key))?;
         let response = key.as_request(Method::GET, url).send().await?;
         let out: Vec<ChannelItem> = response.json().await?;

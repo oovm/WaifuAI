@@ -21,7 +21,7 @@ use tokio_tungstenite::{
 };
 use url::Url;
 
-use crate::{AckermanResult, QQSecret};
+use crate::{QQResult, QQSecret};
 
 pub use self::{
     connect_event::ConnectEvent,
@@ -122,14 +122,14 @@ impl<T> QQBotWebsocket<T>
 where
     T: QQBotProtocol,
 {
-    pub async fn link(bot: T) -> AckermanResult<Self> {
+    pub async fn link(bot: T) -> QQResult<Self> {
         let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
         let request = bot.build_request(Method::GET, url);
         let connected: QQBotConnected = request.send().await?.json().await?;
         let (wss, _) = connect_async(&connected.url).await?;
         Ok(Self { wss, bot, connected, heartbeat_id: 0, closed: false })
     }
-    pub async fn relink(&mut self) -> AckermanResult {
+    pub async fn relink(&mut self) -> QQResult {
         let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
         let request = self.bot.build_request(Method::GET, url);
         let connected: QQBotConnected = request.send().await?.json().await?;
@@ -141,7 +141,7 @@ where
     pub async fn next(&mut self) -> Option<Result<Message, Error>> {
         self.wss.next().await
     }
-    pub async fn dispatch(&mut self, event: Result<Message, Error>) -> AckermanResult {
+    pub async fn dispatch(&mut self, event: Result<Message, Error>) -> QQResult {
         let received: QQBotOperation = match event? {
             Message::Text(s) => match from_str(&s) {
                 Ok(o) => o,
@@ -187,11 +187,11 @@ where
         };
         Ok(())
     }
-    pub async fn send(&mut self, operator: &QQBotOperation) -> AckermanResult<()> {
+    pub async fn send(&mut self, operator: &QQBotOperation) -> QQResult<()> {
         self.wss.send(Message::Text(to_string(&operator)?)).await?;
         Ok(())
     }
-    pub async fn send_heartbeat(&mut self) -> AckermanResult<()> {
+    pub async fn send_heartbeat(&mut self) -> QQResult<()> {
         let protocol = QQBotOperation {
             op: 1,
             d: EventDispatcher::NeedBeat(self.heartbeat_id),
@@ -203,7 +203,7 @@ where
         self.bot.on_heartbeat(self.heartbeat_id).await?;
         Ok(())
     }
-    pub async fn send_identify(&mut self) -> AckermanResult<()> {
+    pub async fn send_identify(&mut self) -> QQResult<()> {
         println!("[{}] 协议 2", Utc::now().format("%F %H:%M:%S"));
         let intents = 1 << 9 | 1 << 10 | 1 << 26 | 1 << 30;
         let protocol = QQBotOperation {
