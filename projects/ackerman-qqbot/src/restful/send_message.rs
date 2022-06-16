@@ -13,8 +13,21 @@ use super::*;
 pub struct SendMessageRequest {
     pub content: String,
     pub msg_id: String,
+    pub user_id: u64,
     pub file_image: String,
     pub image_path: PathBuf,
+}
+#[derive(Serialize, Deserialize)]
+struct MessageReferenceR {
+    message_reference: MessageReference,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MessageReference {
+    /// 需要引用回复的消息 id
+    message_id: String,
+    /// 是否忽略获取引用消息详情错误
+    ignore_get_message_error: bool,
 }
 
 impl SendMessageRequest {
@@ -26,15 +39,19 @@ impl SendMessageRequest {
             format!("https://api.sgroup.qq.com/channels/{channel_id}/messages",)
         }
     }
-    pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64, user_id: u64) -> QQResult {
+    pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64) -> QQResult {
         let url = Url::from_str(&Self::end_point(channel_id))?;
 
         let mut file = File::open(&self.image_path).await?;
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).await?;
         let mut image_part = Part::bytes(bytes).file_name("photo");
+        // 必须用户 @机器人才能引用
+        let _ = MessageReferenceR {
+            message_reference: MessageReference { message_id: self.msg_id.to_string(), ignore_get_message_error: true },
+        };
         let form = Form::new()
-            .text("content", self.content.to_string())
+            .text("content", format!("<@!{}> {}", self.user_id, self.content))
             .text("msg_id", self.msg_id.to_string())
             .part("file_image", image_part);
         let response = bot.build_request(Method::POST, url).multipart(form).send().await?;

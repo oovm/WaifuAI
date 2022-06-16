@@ -138,6 +138,16 @@ where
         self.closed = false;
         Ok(())
     }
+    pub async fn run(&mut self) -> QQResult {
+        let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
+        let request = self.bot.build_request(Method::GET, url);
+        let connected: QQBotConnected = request.send().await?.json().await?;
+        let (wss, _) = connect_async(&connected.url).await?;
+        self.wss = wss;
+        self.closed = false;
+        Ok(())
+    }
+
     pub async fn next(&mut self) -> Option<Result<Message, Error>> {
         self.wss.next().await
     }

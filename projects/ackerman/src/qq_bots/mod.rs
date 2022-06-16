@@ -11,9 +11,21 @@ mod image_request;
 pub struct AckermanQQBot {
     pub secret: QQSecret,
     pub here: PathBuf,
+    pub cn_tags: BTreeMap<String, String>,
 }
 
 impl AckermanQQBot {
+    pub fn new(dir: PathBuf, secret: QQSecret) -> QQResult<Self> {
+        let mut out = Self { secret, here: dir, cn_tags: BTreeMap::default() };
+        out.ensure_path()?;
+        for line in include_str!("dict.txt").lines() {
+            if let Some((cn, en)) = line.split_once(",") {
+                out.cn_tags.insert(cn.trim().to_string(), en.trim().to_string());
+            }
+        }
+        Ok(out)
+    }
+
     pub fn ensure_path(&self) -> QQResult {
         if !self.target_dir().exists() {
             fs::create_dir(self.target_dir())?
@@ -29,12 +41,6 @@ impl AckermanQQBot {
     }
     pub fn waifu_image_request(&mut self, rest: &str) -> QQResult<NovelAIRequest> {
         let mut image = NovelAIRequest::default();
-        let mut dict = BTreeMap::default();
-        for line in include_str!("dict.txt").lines() {
-            if let Some((cn, en)) = line.split_once(",") {
-                dict.insert(cn.trim().to_string(), en.trim().to_string());
-            }
-        }
         for tag in rest.split(|c| c == ',' || c == '，') {
             let tag = tag.trim().to_ascii_lowercase();
             match tag.as_str() {
@@ -46,7 +52,7 @@ impl AckermanQQBot {
                 s if s.starts_with("step") => {}
                 s if s.starts_with("steps") => {}
                 s if s.starts_with("步数") => {}
-                _ => match dict.get(&tag) {
+                _ => match self.cn_tags.get(&tag) {
                     Some(normed) => {
                         if !normed.is_empty() {
                             image.add_tag(normed);
@@ -87,11 +93,12 @@ impl QQBotProtocol for AckermanQQBot {
                     let image_path = self.target_dir().join("{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg");
                     let req = SendMessageRequest {
                         msg_id: event.id,
-                        content: format!("{:#?}", tags),
+                        content: "".to_string(),
                         image_path,
                         file_image: "photo".to_string(),
+                        user_id: event.author.id,
                     };
-                    req.send(self, event.channel_id, event.author.id).await?;
+                    req.send(self, event.channel_id).await?;
                 }
                 else {
                     println!("    waifu 空请求");
