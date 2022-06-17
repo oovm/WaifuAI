@@ -15,8 +15,8 @@ pub struct AckermanQQBot {
 }
 
 impl AckermanQQBot {
-    pub fn new(dir: PathBuf, secret: QQSecret) -> QQResult<Self> {
-        let mut out = Self { secret, here: dir, cn_tags: BTreeMap::default() };
+    pub fn new(work_dir: PathBuf, secret: QQSecret) -> QQResult<Self> {
+        let mut out = Self { secret, here: work_dir, cn_tags: BTreeMap::default() };
         out.ensure_path()?;
         for line in include_str!("dict.txt").lines() {
             if let Some((cn, en)) = line.split_once(",") {
@@ -36,7 +36,9 @@ impl AckermanQQBot {
         self.here.join("target/ackerman/")
     }
     async fn on_normal_message(&mut self, event: MessageEvent) -> QQResult {
-        println!("    常规消息 {:#?}", event.content);
+        if !event.content.is_empty() {
+            println!("    常规消息 {:#?}", event.content);
+        }
         Ok(())
     }
     pub fn waifu_image_request(&mut self, rest: &str) -> QQResult<NovelAIRequest> {
@@ -95,7 +97,7 @@ impl QQBotProtocol for AckermanQQBot {
                         msg_id: event.id,
                         content: "".to_string(),
                         image_path,
-                        file_image: "photo".to_string(),
+                        file_image: "waifu".to_string(),
                         user_id: event.author.id,
                     };
                     req.send(self, event.channel_id).await?;
@@ -105,6 +107,30 @@ impl QQBotProtocol for AckermanQQBot {
                 }
                 Ok(())
             }
+            s if s.starts_with("furry") => {
+                let tags = self.waifu_image_request(&s["furry".len()..s.len()])?;
+                if !tags.is_empty() {
+                    match event.attachments.first() {
+                        None => {}
+                        Some(s) => s.download(&self.target_dir()).await?,
+                    }
+                    let image_path = self.target_dir().join("{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg");
+                    let req = SendMessageRequest {
+                        msg_id: event.id,
+                        content: "".to_string(),
+                        image_path,
+                        file_image: "furry".to_string(),
+                        user_id: event.author.id,
+                    };
+                    req.send(self, event.channel_id).await?;
+                }
+                else {
+                    println!("    waifu 空请求");
+                }
+                Ok(())
+            }
+            // 不要处理 @开头的事件
+            s if s.starts_with("<@!") => Ok(()),
             _ => self.on_normal_message(event).await,
         }
     }
