@@ -1,12 +1,37 @@
 #[derive(Debug)]
 pub struct NovelAIRequest {
     tags: Vec<String>,
-    pub aspect_ratio: f32,
+    layout: ImageLayout,
+    kind: NovelAIKind,
+}
+
+pub enum NovelAIKind {
+    Anime = 0,
+}
+
+pub enum ImageLayout {
+    Square = 0,
+    Portrait = 1,
+    Landscape = 2,
+}
+
+impl From<f32> for ImageLayout {
+    fn from(v: f32) -> Self {
+        if v > 1.0 {
+            Self::Landscape
+        }
+        else if v < 1.0 {
+            Self::Portrait
+        }
+        else {
+            Self::Square
+        }
+    }
 }
 
 impl Default for NovelAIRequest {
     fn default() -> Self {
-        Self { tags: vec![], aspect_ratio: 0.0 }
+        Self { tags: vec![], layout: ImageLayout::Square, kind: NovelAIKind::Anime }
     }
 }
 
@@ -16,7 +41,20 @@ impl NovelAIRequest {
             self.tags.push(tag.to_string())
         }
     }
+    pub fn set_layout(&mut self, layout: impl Into<ImageLayout>) {
+        self.layout = layout.into()
+    }
+    pub fn set_kind(&mut self, kind: impl Into<NovelAIKind>) {
+        self.kind = kind.into()
+    }
     pub fn is_empty(&self) -> bool {
         self.tags.is_empty()
+    }
+    pub fn cost(&self) -> i64 {
+        let kind = match self.kind {
+            NovelAIKind::Anime => 1.414,
+        };
+        let cost = f32::log2(self.tags.len() as f32) * kind * 1000.0;
+        cost.ceil().to_i64().unwrap_or(2)
     }
 }
