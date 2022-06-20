@@ -7,5 +7,13 @@ async fn main() -> QQResult {
     let here = std::env::current_dir()?;
     let bot = AckermanQQBot::new(here, key)?;
     let mut wss = QQBotWebsocket::link(bot).await?;
-    wss.run().await
+    match wss.run().await {
+        Ok(_) => {
+            println!("已退出")
+        }
+        Err(e) => {
+            println!("已退出: {:?}", e)
+        }
+    }
+    Ok(())
 }
