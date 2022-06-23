@@ -58,3 +58,26 @@ impl NovelAIRequest {
         cost.ceil() as i64
     }
 }
+
+#[derive(Serialize, Deserialize)]
+struct Parameters {
+    pub width: i64,
+    pub height: i64,
+    pub scale: i64,
+    pub sampler: String,
+    pub steps: i64,
+    pub seed: i64,
+    pub n_samples: i64,
+    #[serde(rename = "ucPreset")]
+    pub uc_preset: i64,
+    #[serde(rename = "qualityToggle")]
+    pub quality_toggle: bool,
+    pub uc: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Root {
+    pub input: String,
+    pub model: String,
+    pub parameters: Parameters,
+}
