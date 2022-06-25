@@ -39,6 +39,9 @@ impl SendMessageRequest {
             format!("https://api.sgroup.qq.com/channels/{channel_id}/messages",)
         }
     }
+    pub async fn send_error(&self, bot: &impl QQBotProtocol, channel_id: u64) {
+        todo!()
+    }
     pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64) -> QQResult {
         let url = Url::from_str(&Self::end_point(channel_id))?;
 
