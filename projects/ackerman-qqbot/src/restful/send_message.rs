@@ -1,8 +1,6 @@
 use multipart::Form;
 use reqwest::{multipart, multipart::Part};
 use serde_json::Value;
-use std::path::PathBuf;
-use tokio::{fs::File, io::AsyncReadExt};
 
 use super::*;
 
@@ -14,8 +12,7 @@ pub struct SendMessageRequest {
     pub content: String,
     pub msg_id: String,
     pub user_id: u64,
-    pub file_image: String,
-    pub image_path: PathBuf,
+    pub image_bytes: Vec<u8>,
 }
 #[derive(Serialize, Deserialize)]
 struct MessageReferenceR {
@@ -44,19 +41,13 @@ impl SendMessageRequest {
     }
     pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64) -> QQResult {
         let url = Url::from_str(&Self::end_point(channel_id))?;
-
-        let mut file = File::open(&self.image_path).await?;
-        let mut bytes = vec![];
-        file.read_to_end(&mut bytes).await?;
-        let mut image_part = Part::bytes(bytes).file_name("photo");
+        let mut image_part = Part::bytes(self.image_bytes.clone()).file_name("file_image");
         // 必须用户 @机器人才能引用
         let _ = MessageReferenceR {
             message_reference: MessageReference { message_id: self.msg_id.to_string(), ignore_get_message_error: true },
         };
-        let form = Form::new()
-            .text("content", format!("<@!{}> {}", self.user_id, self.content))
-            .text("msg_id", self.msg_id.to_string())
-            .part("file_image", image_part);
+        let content = format!("<@!{}> {}", self.user_id, self.content);
+        let form = Form::new().text("content", content).text("msg_id", self.msg_id.to_string()).part("file_image", image_part);
         let response = bot.build_request(Method::POST, url).multipart(form).send().await?;
         if response.status().as_u16() > 300 {
             println!("{:#?}", response.json::<Value>().await?)

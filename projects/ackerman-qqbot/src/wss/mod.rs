@@ -148,7 +148,10 @@ where
                 listen = self.next() => {
                     match listen {
                         Some(event) =>{
-                            self.dispatch(event).await?;
+                            match self.dispatch(event).await {
+                                Ok(_) => {}
+                                Err(_) => {}
+                            }
                         }
                         None => {
                             return Ok(())
