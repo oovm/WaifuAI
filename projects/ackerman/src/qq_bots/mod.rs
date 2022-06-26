@@ -93,6 +93,10 @@ impl AckermanQQBot {
     }
     pub fn waifu_image_request(&mut self, rest: &str) -> QQResult<NovelAIRequest> {
         let mut image = NovelAIRequest::default();
+        image.add_tag("best quality");
+        image.add_tag("highres");
+        image.add_tag("original");
+        image.add_tag("masterpiece");
         for tag in rest.split(|c| c == ',' || c == '，') {
             let tag = tag.trim().to_ascii_lowercase();
             match tag.as_str() {
@@ -121,8 +125,6 @@ impl AckermanQQBot {
                 },
             }
         }
-        image.add_tag("best quality");
-        image.add_tag("masterpiece");
         Ok(image)
     }
 }
@@ -142,7 +144,8 @@ impl QQBotProtocol for AckermanQQBot {
                 if !tags.is_empty() {
                     if let Some(s) = event.attachments.first() {
                         let image = s.download(&self.target_dir()).await?;
-                        tags.set_reference_image(image)
+                        tags.set_reference_image(image);
+                        tags.set_layout(s.width as f32 / s.height as f32);
                     }
                     let image_bytes = tags.nai_request(self).await?;
                     tags.nai_save(&self.target_dir(), &image_bytes).await?;

@@ -15,9 +15,9 @@ normal quality,
 jpeg artifacts,
 signature,
 watermark,
+censored,
 username,
 blurry,
-box,
 明日方舟,arknights
 碧蓝航线,azur lane
 原神,genshin
@@ -74,6 +74,9 @@ box,
 -------------穿着--------------
 泳装,swimwear
 制服,uniform
+裙子, skirt
+全身, full body
+连衣裙, dress
 赛博,cyber
 --------------场景----------------
 卧室,bedroom

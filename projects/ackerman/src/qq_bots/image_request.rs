@@ -36,10 +36,10 @@ pub enum ImageLayout {
 
 impl From<f32> for ImageLayout {
     fn from(v: f32) -> Self {
-        if v > 1.0 {
+        if v > 1.05 {
             Self::Landscape
         }
-        else if v < 1.0 {
+        else if v < 0.95 {
             Self::Portrait
         }
         else {
@@ -119,10 +119,19 @@ impl NovelAIRequest {
     fn nai_request_body(&self) -> NaiRequest {
         let mut rng = rand::thread_rng();
         let seed: u32 = rng.gen();
+        let no_ref_image = self.image.is_empty();
         let model = match self.kind {
-            NovelAIKind::Anime => "nai-diffusion",
+            NovelAIKind::Anime => {
+                if no_ref_image {
+                    "nai-diffusion"
+                }
+                else {
+                    "safe-diffusion"
+                }
+            }
             NovelAIKind::Furry => "nai-diffusion-furry",
         };
+
         let width = match self.layout {
             ImageLayout::Square => 640,
             ImageLayout::Portrait => 512,
@@ -133,12 +142,12 @@ impl NovelAIRequest {
             ImageLayout::Portrait => 768,
             ImageLayout::Landscape => 512,
         };
-        let image = if self.image.is_empty() { String::new() } else { base64::encode(&self.image) };
-        let steps = if self.image.is_empty() { 28 } else { 50 };
+        let image = if no_ref_image { String::new() } else { base64::encode(&self.image) };
+        let steps = if no_ref_image { 28 } else { 50 };
         // 越小越遵守参考
-        let strength = if self.image.is_empty() { 0.9 } else { 0.6 };
+        let strength = if no_ref_image { 0.9 } else { 0.6 };
         // 越大越遵守标签
-        let scale = if self.image.is_empty() { 11 } else { 13 };
+        let scale = if no_ref_image { 11 } else { 13 };
         NaiRequest {
             input: self.tags.join(","),
             model: model.to_string(),
