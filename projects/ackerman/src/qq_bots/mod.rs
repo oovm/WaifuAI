@@ -1,18 +1,22 @@
 use std::{
-    collections::BTreeMap,
+    collections::{hash_map::RandomState, BTreeMap},
     fs,
     fs::read_to_string,
+    hash::{BuildHasher, Hash, Hasher},
     io::Write,
     path::{Path, PathBuf},
 };
 
 use async_trait::async_trait;
 use dashmap::DashMap;
-use qq_bot::{restful::SendMessageRequest, wss::MessageEvent, QQBotProtocol, QQResult, QQSecret, RequestBuilder, Url};
+use serde::{Deserialize, Serialize};
+use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_tungstenite::tungstenite::http::Method;
 
+use qq_bot::{restful::SendMessageRequest, wss::MessageEvent, QQBotProtocol, QQResult, QQSecret, RequestBuilder, Url};
+
 pub use self::image_request::NovelAIRequest;
-use serde::{Deserialize, Serialize};
+
 mod image_request;
 
 #[derive(Serialize, Deserialize)]
@@ -45,16 +49,21 @@ impl AckermanConfig {
 }
 
 impl AckermanQQBot {
-    pub fn new(work_dir: PathBuf, config: AckermanConfig) -> QQResult<Self> {
-        let mut out = Self { config, here: work_dir, cn_tags: BTreeMap::default(), users: Default::default() };
+    pub fn loading() -> QQResult<Self> {
+        let here = std::env::current_dir()?;
+        let mut out = Self { config: Default::default(), here, cn_tags: BTreeMap::default(), users: Default::default() };
         if out.database_path().exists() {
-            let db = fs::read_to_string(out.database_path())?;
-            out = serde_json::from_str(&db)?
+            let db = read_to_string(out.database_path())?;
+            let saved: Self = serde_json::from_str(&db)?;
+            out.cn_tags = saved.cn_tags;
+            out.users = saved.users;
         }
-        else {
-            out.ensure_path()?;
-        }
+        out.ensure_path()?;
         out.load_dict();
+        match AckermanConfig::load_toml("ackerman.toml") {
+            Ok(o) => out.config = o,
+            Err(_) => {}
+        }
         Ok(out)
     }
     pub fn load_dict(&mut self) {
@@ -112,6 +121,8 @@ impl AckermanQQBot {
                 },
             }
         }
+        image.add_tag("best quality");
+        image.add_tag("masterpiece");
         Ok(image)
     }
 }
@@ -129,17 +140,18 @@ impl QQBotProtocol for AckermanQQBot {
             s if s.starts_with("waifu") => {
                 let mut tags = self.waifu_image_request(&s["waifu".len()..s.len()])?;
                 if !tags.is_empty() {
-                    tags.add_tag("best quality");
-                    tags.add_tag("masterpiece");
-
                     let image = tags.nai_request(self).await?;
-                    println!("{:#?}", image);
+                    let mut hasher = RandomState::default().build_hasher();
+                    image.hash(&mut hasher);
+                    let image_name = format!("{}.png", hasher.finish());
+                    let image_path = self.target_dir().join(image_name);
+                    let mut file = File::create(&image_path).await?;
+                    file.write_all(&image).await?;
 
                     match event.attachments.first() {
                         None => {}
                         Some(s) => s.download(&self.target_dir()).await?,
                     }
-                    let image_path = self.target_dir().join("{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg");
                     let req = SendMessageRequest {
                         msg_id: event.id,
                         content: "".to_string(),

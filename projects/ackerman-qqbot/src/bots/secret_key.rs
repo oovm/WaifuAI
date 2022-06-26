@@ -1,4 +1,5 @@
 use super::*;
+use reqwest::header::CONTENT_TYPE;
 
 impl QQSecret {
     pub fn channel_id(&self) -> u64 {
@@ -12,6 +13,7 @@ impl QQSecret {
             .request(method, url)
             .header(USER_AGENT, "BotNodeSDK/v2.9.4")
             .header(AUTHORIZATION, self.bot_token())
+            .header(CONTENT_TYPE, "application/json")
             // .bearer_auth(&self.bot_secret)
             .timeout(Duration::from_secs(3))
     }
