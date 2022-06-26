@@ -20,6 +20,7 @@ pub struct NovelAIRequest {
     tags: Vec<String>,
     layout: ImageLayout,
     kind: NovelAIKind,
+    image: Vec<u8>,
 }
 #[derive(Debug, Hash)]
 pub enum NovelAIKind {
@@ -49,7 +50,7 @@ impl From<f32> for ImageLayout {
 
 impl Default for NovelAIRequest {
     fn default() -> Self {
-        Self { tags: vec![], layout: ImageLayout::Portrait, kind: NovelAIKind::Anime }
+        Self { tags: vec![], layout: ImageLayout::Portrait, kind: NovelAIKind::Anime, image: vec![] }
     }
 }
 
@@ -64,6 +65,9 @@ impl NovelAIRequest {
     }
     pub fn set_kind(&mut self, kind: impl Into<NovelAIKind>) {
         self.kind = kind.into()
+    }
+    pub fn set_reference_image(&mut self, image: Vec<u8>) {
+        self.image = image;
     }
     pub fn is_empty(&self) -> bool {
         self.tags.is_empty()
@@ -106,7 +110,6 @@ impl NovelAIRequest {
                 Err(_) => {}
             },
         }
-
         Err(QQError::NetError(stream))
     }
     fn qq_content(&self) -> String {
@@ -130,6 +133,12 @@ impl NovelAIRequest {
             ImageLayout::Portrait => 768,
             ImageLayout::Landscape => 512,
         };
+        let image = if self.image.is_empty() { String::new() } else { base64::encode(&self.image) };
+        let steps = if self.image.is_empty() { 28 } else { 50 };
+        // 越小越遵守参考
+        let strength = if self.image.is_empty() { 0.9 } else { 0.6 };
+        // 越大越遵守标签
+        let scale = if self.image.is_empty() { 11 } else { 13 };
         NaiRequest {
             input: self.tags.join(","),
             model: model.to_string(),
@@ -137,13 +146,16 @@ impl NovelAIRequest {
                 width,
                 height,
                 quality_toggle: true,
-                steps: 28,
-                scale: 11,
+                steps,
+                image,
+                scale,
                 n_samples: 1,
+                strength,
                 sampler: "k_euler_ancestral".to_string(),
                 seed,
                 uc: "nsfw, bad anatomy".to_string(),
                 uc_preset: 0,
+                noise: 0.10,
             },
         }
     }
@@ -161,9 +173,13 @@ pub struct Parameters {
     pub width: u64,
     pub height: u64,
     pub scale: u64,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub image: String,
     pub sampler: String,
     pub steps: u8,
     pub n_samples: u8,
+    pub strength: f32,
+    pub noise: f32,
     pub seed: u32,
     #[serde(rename = "ucPreset")]
     pub uc_preset: u64,

@@ -52,7 +52,7 @@ pub struct MessageAttachment {
 }
 
 impl MessageAttachment {
-    pub async fn download(&self, dir: &PathBuf) -> QQResult {
+    pub async fn download(&self, dir: &PathBuf) -> QQResult<Vec<u8>> {
         let url = Url::from_str(&format!("https://{}", self.url))?;
         let request = Client::default()
             .request(Method::GET, url)
@@ -64,6 +64,6 @@ impl MessageAttachment {
         let mut file = File::create(path).await?;
         file.write_all(&bytes).await?;
         println!("    下载完成");
-        Ok(())
+        Ok(bytes.to_vec())
     }
 }
