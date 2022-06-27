@@ -1,8 +1,8 @@
 [workspace]
 members = ["projects/*"]
 default-members = [
-    "projects/ackerman",
-    "projects/ackerman-qqbot",
+    "projects/nai-api",
+    "projects/nai-cli",
 ]
 exclude = [
     "projects/.DS_Store",
