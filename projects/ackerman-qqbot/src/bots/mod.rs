@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, path::Path, time::Duration};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use chrono::{
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::{
-    wss::{EmojiEvent, HeartbeatEvent, LoginEvent, MessageEvent},
+    wss::{EmojiEvent, HeartbeatEvent, LoginEvent, MessageEvent, Subscription},
     QQResult,
 };
 
@@ -43,6 +43,13 @@ fn current_time<'a>() -> DelayedFormat<StrftimeItems<'a>> {
 pub trait QQBotProtocol: Send {
     fn build_bot_token(&self) -> String;
     fn build_request(&self, method: Method, url: Url) -> RequestBuilder;
+    fn subscription(&self) -> Subscription {
+        // 1 << 9 | 1 << 10 | 1 << 26 | 1 << 30
+        Subscription::GUILD_MESSAGES
+            | Subscription::GUILD_MESSAGE_REACTIONS
+            | Subscription::INTERACTION
+            | Subscription::PUBLIC_GUILD_MESSAGES
+    }
     async fn on_connected(&mut self, event: HeartbeatEvent) -> QQResult {
         println!("[{}] 协议 10", current_time());
         println!("    已连接");

@@ -1,5 +1,4 @@
 use super::*;
-use reqwest::header::CONTENT_TYPE;
 
 impl QQSecret {
     pub fn channel_id(&self) -> u64 {

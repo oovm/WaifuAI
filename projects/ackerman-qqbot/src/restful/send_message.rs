@@ -41,7 +41,7 @@ impl SendMessageRequest {
     }
     pub async fn send(&self, bot: &impl QQBotProtocol, channel_id: u64) -> QQResult {
         let url = Url::from_str(&Self::end_point(channel_id))?;
-        let mut image_part = Part::bytes(self.image_bytes.clone()).file_name("file_image");
+        let image_part = Part::bytes(self.image_bytes.clone()).file_name("file_image");
         // 必须用户 @机器人才能引用
         let _ = MessageReferenceR {
             message_reference: MessageReference { message_id: self.msg_id.to_string(), ignore_get_message_error: true },
