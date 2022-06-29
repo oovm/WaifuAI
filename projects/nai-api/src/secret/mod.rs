@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NaiSecret {
-   pub bearer: String,
+    pub bearer: String,
 }

@@ -13,8 +13,7 @@ time-travel.*
 target/
 Cargo.lock
 
-ackerman.toml
-ackerman.exe
+nai.toml
 
 nai.js
 nai.mjs

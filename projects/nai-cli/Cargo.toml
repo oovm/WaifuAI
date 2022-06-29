@@ -10,7 +10,14 @@ license = "MPL-2.0"
 edition = "2021"
 
 [dependencies]
+toml = "0.5.9"
+tokio = {version = "1.21.2", features = ["full"]}
+tokio-stream = "0.1.11"
 novel-ai = {version = "0.0.0", path = "../nai-api"}
+futures-util = "0.3.24"
+rand = {version = "0.8.5", features = []}
+chrono = "0.4.22"
+serde = {version = "1.0.145", features = ["derive"]}
 
 [dev-dependencies]
 

@@ -1,19 +1,17 @@
-use base64::{decode, encode};
-use rand::thread_rng;
-use reqwest::header::CONTENT_TYPE;
-use reqwest::{Client, Method};
-use url::Url;
-use crate::{NaiError, NaiResult, NaiSecret};
 use super::*;
+use crate::{NaiError, NaiResult, NaiSecret};
+use base64::{decode, encode};
+use reqwest::{header::CONTENT_TYPE, Client, Method};
+use url::Url;
 
-#[derive(Serialize, Deserialize)]
-struct Request {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ImageRequest {
     pub input: String,
     pub model: String,
     pub parameters: ImageParameters,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ImageParameters {
     pub width: u64,
     pub height: u64,
@@ -33,47 +31,36 @@ pub struct ImageParameters {
     pub uc: String,
 }
 
-
 impl From<f32> for ImageLayout {
     fn from(v: f32) -> Self {
         if v > 1.05 {
             Self::Landscape
-        } else if v < 0.95 {
+        }
+        else if v < 0.95 {
             Self::Portrait
-        } else {
+        }
+        else {
             Self::Square
         }
-    }
-}
-impl ImageParameters {
-    pub async fn request_image(&self, secret: &NaiSecret) -> NaiResult<Vec<u8>> {
-        let nai_url = Url::from_str("https://api.novelai.net/ai/generate-image")?;
-        let nai_request = Client::default()
-            .request(Method::POST, nai_url)
-            .header(CONTENT_TYPE, "application/json")
-            // .header(USER_AGENT, "BotNodeSDK/v2.9.4")
-            // .header("origin", "https://novelai.net")
-            // .header("referer", "https://novelai.net/")
-            .bearer_auth(&secret.bearer)
-            .body(to_string(&sel)?)
-            .timeout(Duration::from_secs(30));
-        // text/event-stream
-        let stream = nai_request.send().await?.text().await?;
-        match stream.split_once("data:") {
-            None => {}
-            Some((_, image)) => match decode(image.trim()) {
-                Ok(o) => return Ok(o),
-                Err(_) => {}
-            },
-        }
-        Err(NaiError::NetError(stream))
     }
 }
 
 impl ImageRequestBuilder {
     pub fn add_tag(&mut self, tag: &str) {
         if !tag.is_empty() {
-            self.tags.push(tag.to_string())
+            self.tags.push(tag.trim().to_string())
+        }
+    }
+    pub fn add_tag_bless(&mut self, strong: bool) {
+        match strong {
+            true => self.add_tag_split("{best quality}, {masterpiece}, {highres}"),
+            false => self.add_tag_split("best quality, masterpiece, highres"),
+        }
+    }
+    pub fn add_tag_split(&mut self, tags: &str) {
+        let tags: Vec<_> = tags.split(|f: char| self.split.contains(&f)).collect();
+        for tag in tags {
+            self.add_tag(tag)
         }
     }
     pub fn set_layout(&mut self, layout: impl Into<ImageLayout>) {
@@ -97,9 +84,7 @@ impl ImageRequestBuilder {
         file.write_all(&bytes).await?;
         Ok(())
     }
-    pub fn build(&self) -> ImageParameters {
-        let mut rng = thread_rng();
-        let seed = rng.gen();
+    fn build_parameters(&self) -> ImageParameters {
         let no_ref_image = self.image.is_empty();
         let width = match self.layout {
             ImageLayout::Square => 640,
@@ -127,28 +112,49 @@ impl ImageRequestBuilder {
             n_samples: 1,
             strength,
             sampler: "k_euler_ancestral".to_string(),
-            seed,
-            uc: "".to_string(),
+            seed: 42,
+            uc: "nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry".to_string(),
             uc_preset: 0,
-            noise: 0.00,
+            noise: 0.10,
         }
     }
-    fn nai_request_body(&self, parameters: ImageParameters) -> Request {
+    pub fn build(&self) -> ImageRequest {
         let model = match self.kind {
             NovelAIKind::Anime => {
-                if parameters.image.is_empty() {
+                if self.image.is_empty() {
                     "nai-diffusion"
-                } else {
+                }
+                else {
                     "safe-diffusion"
                 }
             }
             NovelAIKind::Furry => "nai-diffusion-furry",
         };
-        Request {
-            input: self.tags.join(","),
-            model: model.to_string(),
-            parameters,
-        }
+        ImageRequest { input: self.tags.join(","), model: model.to_string(), parameters: self.build_parameters() }
     }
 }
 
+impl ImageRequest {
+    pub async fn request_image(&self, secret: &NaiSecret) -> NaiResult<Vec<u8>> {
+        let nai_url = Url::from_str("https://api.novelai.net/ai/generate-image")?;
+        let nai_request = Client::default()
+            .request(Method::POST, nai_url)
+            .header(CONTENT_TYPE, "application/json")
+            // .header(USER_AGENT, "BotNodeSDK/v2.9.4")
+            // .header("origin", "https://novelai.net")
+            // .header("referer", "https://novelai.net/")
+            .bearer_auth(&secret.bearer)
+            .body(to_string(self)?)
+            .timeout(Duration::from_secs(30));
+        // text/event-stream
+        let stream = nai_request.send().await?.text().await?;
+        match stream.split_once("data:") {
+            None => {}
+            Some((_, image)) => match decode(image.trim()) {
+                Ok(o) => return Ok(o),
+                Err(_) => {}
+            },
+        }
+        Err(NaiError::NetError(stream))
+    }
+}
