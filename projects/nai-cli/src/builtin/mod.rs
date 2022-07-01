@@ -1,7 +1,7 @@
-pub struct Lazy {}
+pub struct BuiltinPrompt {}
 
-impl Lazy {
-    pub fn a() {
-        ""
+impl BuiltinPrompt {
+    pub fn normal() -> String {
+        String::new()
     }
 }

@@ -9,9 +9,13 @@ readme = "Readme.md"
 license = "MPL-2.0"
 edition = "2021"
 
+[[bin]]
+name = "nai"
+path = "src/main.rs"
+
 [dependencies]
 toml = "0.5.9"
-clap = "4.0.12"
+clap = {version = "4.0.12", features = ["derive"]}
 tokio = {version = "1.21.2", features = ["full"]}
 tokio-stream = "0.1.11"
 novel-ai = {version = "0.0.0", path = "../nai-api"}
