@@ -9,54 +9,84 @@ use std::{
 };
 use tokio::{fs::File, io::AsyncWriteExt};
 use toml::from_str;
-
+use serde::{Deserialize, Serialize};
 pub mod builtin;
 pub mod with_tags;
 use rand::Rng;
 
+
+use clap::Parser;
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Name of the person to greet
+    #[arg(short, long)]
+    name: String,
+
+    /// Number of times to greet
+    #[arg(short, long, default_value_t = 1)]
+    threads: u8,
+    /// Number of times to greet
+    #[arg(short, long, default_value_t = 1)]
+    seeds: u8,
+    /// Number of times to greet
+    #[arg(short, long, default_value_t = 1)]
+    frame: u8,
+
+
+}
+
+
 #[tokio::main]
 async fn main() -> NaiResult {
+    let args = Args::parse();
     let nai: NaiSecret = match from_str(&read_to_string("nai.toml")?) {
         Ok(o) => o,
         Err(e) => return Err(NaiError::ParseError(e.to_string())),
     };
-    // nai miko -f 5
-    let concurrency = 3;
-    let seeds = 99999;
+    let threads = 3;
+    let seeds = 16;
     let frame = 1;
-    let step = 13;
-    let mut tasks = VecDeque::new();
+    let step = 16;
+    let mut tasks = Vec::new();
 
-    for _ in 1..=seeds {
-        let mut rng = thread_rng();
-        let seed = rng.gen();
-        let builder = TaskBuilder {
-            tags: "best quality, masterpiece, highres, school uniform, devil, black hair, off_shoulder, {solo}".to_string(),
-            seed,
-            dir: PathBuf::from("target/nai/school uniform/"),
-        };
-        builder.ensure_path()?;
-        for i in 0..=(frame - 1) {
-            if i % 2 == 0 {
-                tasks.push_back(builder.clone().task(i * step, &nai))
+    for _ in 0..args.count {
+        println!("Hello {}!", args.name)
+    }
+    if false {
+        for _ in 1..=seeds {
+            let mut rng = thread_rng();
+            let seed = rng.gen();
+            let builder = TaskBuilder {
+                tags: "best quality, masterpiece, highres, school uniform, devil, black hair, off_shoulder, {solo}".to_string(),
+                seed,
+                dir: PathBuf::from("target/nai/school uniform/"),
+            };
+            builder.ensure_path()?;
+            for i in 0..=(frame - 1) {
+                tasks.push(builder.clone().task(i * step, &nai))
             }
-            else {
-                tasks.push_front(builder.clone().task(i * step, &nai))
+        }
+        let mut stream = tokio_stream::iter(tasks).buffer_unordered(threads);
+        while let Some(task) = stream.next().await {
+            match task {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("{:?}", e)
+                }
             }
         }
     }
-    let mut stream = tokio_stream::iter(tasks).buffer_unordered(concurrency);
-    while let Some(task) = stream.next().await {
-        match task {
-            Ok(_) => {}
-            Err(e) => {
-                println!("{:?}", e)
-            }
-        }
-    }
+
+
     Ok(())
 }
-use serde::{Deserialize, Serialize};
+
+
+
+
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TaskBuilder {

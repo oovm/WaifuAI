@@ -11,6 +11,7 @@ edition = "2021"
 
 [dependencies]
 toml = "0.5.9"
+clap = "4.0.12"
 tokio = {version = "1.21.2", features = ["full"]}
 tokio-stream = "0.1.11"
 novel-ai = {version = "0.0.0", path = "../nai-api"}
