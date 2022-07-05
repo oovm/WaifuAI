@@ -1,32 +1,19 @@
-use std::{
-    fs::{create_dir, read_to_string},
-    io::Write,
-    path::PathBuf,
-};
-use std::collections::hash_map::DefaultHasher;
-use std::future::Future;
-use std::hash::{Hash, Hasher};
+use std::{fs::read_to_string, io::stdin};
 
-use futures_util::StreamExt;
-use rand::Rng;
-use rand::thread_rng;
+use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
-use tokio::{fs::File, io::AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use toml::from_str;
 
-use clap::Args;
-use clap::Parser;
-use clap::Subcommand;
-use novel_ai::{ImageRequest, ImageRequestBuilder, NaiError, NaiResult, NaiSecret};
+use novel_ai::{NaiError, NaiResult, NaiSecret};
 
+pub use self::builtin::BuiltinPrompt;
 
+mod builtin;
+mod command_args;
+mod task_builder;
+mod with_tags;
 
-pub mod builtin;
-pub mod with_tags;
-pub mod command_args;
-pub mod task_builder;
-
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct NaiApp {
@@ -47,7 +34,7 @@ pub struct CommandArgs {
     /// 文件夹名
     #[arg(default_value_t = String::new())]
     name: String,
-    /// 提示词
+    /// 提示词, 逗号隔开
     #[arg(default_value_t = String::new())]
     tags: String,
     /// 开多少线程同时工作, 默认 3 个
@@ -64,6 +51,12 @@ pub struct CommandArgs {
     step: u32,
 }
 
+impl Default for CommandArgs {
+    fn default() -> Self {
+        Self { name: "".to_string(), tags: "".to_string(), threads: 3, number: 5, frame: 1, step: 16 }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NaiConfig {
     nai: NaiSecret,
@@ -71,18 +64,28 @@ pub struct NaiConfig {
 
 impl NaiConfig {
     pub fn load() -> NaiResult<Self> {
-        match from_str(&read_to_string("nai.toml")?) {
+        let toml = match read_to_string("nai.toml") {
+            Ok(o) => o,
+            Err(_) => return Err(NaiError::ParseError("配置文件 nai.toml 读取失败".to_string())),
+        };
+        match from_str(&toml) {
             Ok(o) => Ok(o),
             Err(e) => return Err(NaiError::ParseError(e.to_string())),
         }
     }
 }
 
-#[tokio::main]
-async fn main() -> NaiResult {
-    let args = NaiApp::parse();
-    let config = NaiConfig::load()?;
-    args.command.run(&config).await?;
-    Ok(())
+impl Default for NaiApp {
+    fn default() -> Self {
+        Self { command: Commands::SS(CommandArgs::default()) }
+    }
 }
 
+#[tokio::main]
+async fn main() -> NaiResult {
+    let args = NaiApp::try_parse().unwrap_or_default();
+    let config = NaiConfig::load()?;
+    args.command.run(&config).await?;
+    press_btn_continue::wait("按任意键退出...").unwrap();
+    Ok(())
+}

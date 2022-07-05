@@ -1,29 +1,15 @@
-use std::{
-    fs::{create_dir, read_to_string},
-    io::Write,
-    path::PathBuf,
-};
-use std::collections::hash_map::DefaultHasher;
-use std::future::Future;
-use std::hash::{Hash, Hasher};
+use std::{fs::create_dir, io::Write, path::PathBuf};
 
-use futures_util::StreamExt;
-use rand::Rng;
-use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use tokio::{fs::File, io::AsyncWriteExt};
-use toml::from_str;
 
-use clap::Args;
-use clap::Parser;
-use clap::Subcommand;
 use novel_ai::{ImageRequest, ImageRequestBuilder, NaiError, NaiResult, NaiSecret};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TaskBuilder {
-    tags: String,
-    seed: u32,
-    dir: PathBuf,
+    pub tags: String,
+    pub seed: u32,
+    pub dir: PathBuf,
 }
 
 impl TaskBuilder {
@@ -32,10 +18,10 @@ impl TaskBuilder {
         builder.add_tag_split(&self.tags);
         builder.build()
     }
-    fn ensure_path(&self) -> NaiResult {
+    pub fn ensure_path(&self) -> NaiResult {
         if !self.dir.exists() {
             create_dir(&self.dir)?;
-            let config = self.dir.join("seed.toml");
+            let config = self.dir.join("_.toml");
             let mut file = std::fs::File::create(config)?;
             match toml::to_string(&self) {
                 Ok(s) => file.write_all(s.as_bytes())?,
@@ -44,7 +30,7 @@ impl TaskBuilder {
         }
         Ok(())
     }
-    async fn task(self, i: u32, nai: NaiSecret) -> NaiResult {
+    pub async fn task(self, i: u32, nai: NaiSecret) -> NaiResult {
         let mut request = self.request();
         let idx = 100 + i;
         request.parameters.noise = 0.2;

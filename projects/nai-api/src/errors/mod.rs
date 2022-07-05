@@ -1,27 +1,25 @@
-use std::error::Error;
-use std::fmt::{Display, Formatter};
+use std::{
+    error::Error,
+    fmt::{Display, Formatter},
+};
 
-
-
-pub type NaiResult<T=()> = Result<T, NaiError>;
+pub type NaiResult<T = ()> = Result<T, NaiError>;
 
 #[derive(Debug)]
 pub enum NaiError {
     IOError(std::io::Error),
     ParseError(String),
-    NetError(String)
+    NetError(String),
 }
 
-impl Error for NaiError {
-
-}
+impl Error for NaiError {}
 
 impl Display for NaiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             NaiError::IOError(e) => write!(f, "{}", e),
             NaiError::ParseError(e) => write!(f, "{}", e),
-            NaiError::NetError(e) => write!(f, "{}", e)
+            NaiError::NetError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -33,7 +31,7 @@ impl From<std::io::Error> for NaiError {
 }
 impl From<url::ParseError> for NaiError {
     fn from(e: url::ParseError) -> Self {
-       Self::ParseError(e.to_string())
+        Self::ParseError(e.to_string())
     }
 }
 impl From<serde_json::Error> for NaiError {

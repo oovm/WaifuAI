@@ -1,13 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::to_string;
 use std::{
-    collections::{hash_map::RandomState},
+    collections::{hash_map::RandomState, BTreeSet},
     hash::{BuildHasher, Hash, Hasher},
-    path::{PathBuf},
+    path::PathBuf,
     str::FromStr,
     time::Duration,
 };
-use std::collections::BTreeSet;
 use tokio::{fs::File, io::AsyncWriteExt};
 
 pub mod image_request;
@@ -42,4 +41,3 @@ pub enum ImageLayout {
     Portrait = 1,
     Landscape = 2,
 }
-
