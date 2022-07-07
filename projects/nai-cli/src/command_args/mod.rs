@@ -1,4 +1,4 @@
-use std::{future::Future, path::PathBuf};
+use std::future::Future;
 
 use futures_util::StreamExt;
 use rand::{thread_rng, Rng};
@@ -34,15 +34,13 @@ impl CommandArgs {
         for _ in 1..=self.number {
             let mut rng = thread_rng();
             let seed = rng.gen();
-            let builder =
-                TaskBuilder { tags: self.tags.clone(), seed, dir: PathBuf::from(format!("target/nai/{}/", &self.name)) };
-            match builder.ensure_path() {
-                Ok(_) => {}
+            let builder = match TaskBuilder::new(&self.tags, &self.name, seed) {
+                Ok(o) => o,
                 Err(e) => {
-                    println!("{}", e);
+                    println!("TaskBuilder::new {}", e);
                     return tasks;
                 }
-            }
+            };
             for i in 0..=(self.frame - 1) {
                 tasks.push(builder.clone().task(i * self.step, secret.clone()))
             }

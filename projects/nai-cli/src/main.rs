@@ -1,8 +1,7 @@
-use std::{fs::read_to_string, io::stdin};
+use std::{env::current_exe, fs::read_to_string};
 
 use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncWriteExt;
 use toml::from_str;
 
 use novel_ai::{NaiError, NaiResult, NaiSecret};
@@ -64,9 +63,12 @@ pub struct NaiConfig {
 
 impl NaiConfig {
     pub fn load() -> NaiResult<Self> {
-        let toml = match read_to_string("nai.toml") {
+        let config_path = current_exe()?.with_file_name("nai.toml");
+        let toml = match read_to_string(config_path) {
             Ok(o) => o,
-            Err(_) => return Err(NaiError::ParseError("配置文件 nai.toml 读取失败".to_string())),
+            Err(_) => {
+                return Err(NaiError::ParseError("配置文件 nai.toml 读取失败".to_string()));
+            }
         };
         match from_str(&toml) {
             Ok(o) => Ok(o),
@@ -83,9 +85,22 @@ impl Default for NaiApp {
 
 #[tokio::main]
 async fn main() -> NaiResult {
+    match try_run().await {
+        Ok(()) => {
+            press_btn_continue::wait("按任意键退出...").unwrap();
+        }
+        Err(e) => {
+            println!("{}", e);
+            press_btn_continue::wait("按任意键退出...").unwrap();
+            return Err(e);
+        }
+    }
+    Ok(())
+}
+
+async fn try_run() -> NaiResult {
     let args = NaiApp::try_parse().unwrap_or_default();
     let config = NaiConfig::load()?;
     args.command.run(&config).await?;
-    press_btn_continue::wait("按任意键退出...").unwrap();
     Ok(())
 }
