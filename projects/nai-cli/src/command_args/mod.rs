@@ -5,7 +5,7 @@ use rand::{thread_rng, Rng};
 
 use novel_ai::{NaiResult, NaiSecret};
 
-use crate::{task_builder::TaskBuilder, BuiltinPrompt, CommandArgs, Commands, NaiConfig};
+use crate::{builtin::BUILTIN_PROMPTS, task_builder::TaskBuilder, CommandArgs, Commands, NaiConfig, Prompts};
 
 impl CommandArgs {
     pub fn prepare_tasks(mut self, secret: NaiSecret, kind: &str) -> Vec<impl Future<Output = NaiResult>> {
@@ -13,14 +13,14 @@ impl CommandArgs {
         if self.tags.is_empty() {
             match kind {
                 "ss" => {
-                    let pair = BuiltinPrompt::se_se();
+                    let pair = BUILTIN_PROMPTS.se_se();
                     self.tags = pair.1;
                     if self.name.is_empty() {
                         self.name = pair.0
                     }
                 }
                 _ => {
-                    let pair = BuiltinPrompt::normal();
+                    let pair = BUILTIN_PROMPTS.normal();
                     self.tags = pair.1;
                     if self.name.is_empty() {
                         self.name = pair.0

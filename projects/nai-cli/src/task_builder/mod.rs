@@ -53,7 +53,7 @@ impl TaskBuilder {
         // request.model = "safe-diffusion".to_string();
         let file_name = format!("{}-{}.png", request.parameters.seed, idx);
         println!("Draw:   {}", file_name);
-        let mut file = File::create(self.dir_name).await?;
+        let mut file = File::create(self.dir_name.join(&file_name)).await?;
         let image = request.request_image(&nai).await?;
         file.write_all(&image).await?;
         println!("Finish: {}", file_name);

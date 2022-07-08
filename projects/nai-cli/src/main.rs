@@ -1,3 +1,5 @@
+#![feature(once_cell)]
+
 use std::{env::current_exe, fs::read_to_string};
 
 use clap::{Args, Parser, Subcommand};
@@ -6,7 +8,7 @@ use toml::from_str;
 
 use novel_ai::{NaiError, NaiResult, NaiSecret};
 
-pub use self::builtin::BuiltinPrompt;
+pub use self::builtin::Prompts;
 
 mod builtin;
 mod command_args;
@@ -79,7 +81,7 @@ impl NaiConfig {
 
 impl Default for NaiApp {
     fn default() -> Self {
-        Self { command: Commands::SS(CommandArgs::default()) }
+        Self { command: Commands::New(CommandArgs::default()) }
     }
 }
 
@@ -88,14 +90,14 @@ async fn main() -> NaiResult {
     match try_run().await {
         Ok(()) => {
             press_btn_continue::wait("按任意键退出...").unwrap();
+            Ok(())
         }
         Err(e) => {
             println!("{}", e);
             press_btn_continue::wait("按任意键退出...").unwrap();
-            return Err(e);
+            Err(e)
         }
     }
-    Ok(())
 }
 
 async fn try_run() -> NaiResult {

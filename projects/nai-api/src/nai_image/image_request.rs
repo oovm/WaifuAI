@@ -53,8 +53,8 @@ impl ImageRequestBuilder {
     }
     pub fn add_tag_bless(&mut self, strong: bool) {
         match strong {
-            true => self.add_tag_split("{best quality}, {masterpiece}, {highres}"),
-            false => self.add_tag_split("best quality, masterpiece, highres"),
+            true => self.add_tag_split("{best quality}, {masterpiece}, highres, original, extremely detailed wallpaper"),
+            false => self.add_tag_split("best quality, masterpiece, highres, original, extremely detailed wallpaper"),
         }
     }
     pub fn add_tag_split(&mut self, tags: &str) {

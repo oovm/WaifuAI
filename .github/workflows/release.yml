@@ -14,15 +14,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            artifact_name: nai
-            asset_name: nai-linux-amd64
+#          - os: ubuntu-latest
+#            artifact_name: nai
+#            asset_name: nai-linux-amd64
           - os: windows-latest
             artifact_name: nai.exe
-            asset_name: nai-win-amd64.exe
-          - os: macos-latest
-            artifact_name: nai
-            asset_name: nai-mac-amd64
+            asset_name: nai.exe
+#          - os: macos-latest
+#            artifact_name: nai
+#            asset_name: nai-mac-amd64
 
     steps:
       - uses: hecrj/setup-rust-action@v1
