@@ -9,9 +9,9 @@ Novel AI 傻瓜版
 
 打开 release 下载可执行文件.
 
-在同目录下新建 nai.toml, 里面放你的 key.
+首次使用需要配置: [图文帮助](projects/nai-cli/Readme.md)
 
-不需要翻墙.
+需要 $25 账号, 不扣点数, 不需要翻墙.
 
 ### 自动出图
 

@@ -2,16 +2,20 @@ name: Rust
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dev ]
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [
+#          ubuntu-latest,
+#          macos-latest,
+          windows-latest
+        ]
     steps:
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@v2
