@@ -11,7 +11,7 @@ Novel AI 傻瓜版
 
 首次使用需要配置: [图文帮助](projects/nai-cli/Readme.md)
 
-需要 $25 账号, 不扣点数, 不需要翻墙.
+不需要翻墙, $25 账号不扣点数.
 
 ### 自动出图
 
@@ -24,9 +24,12 @@ nai.exe ss   # 涩涩版
 
 如果正常, 会显示:
 
+![](https://s2.loli.net/2022/10/12/OZ4351vUlYgKszJ.png)
 
 
-然后生成文件
+然后生成文件:
+
+![](https://s2.loli.net/2022/10/12/ajKLvRrzITQH81O.png)
 
 ### 高级模式
 
