@@ -1,13 +1,13 @@
 Novel AI 傻瓜版
 =====================
 
-只要爽就行了吧~~~
+只要涩涩就行了吧~~~
 
-分享你的提示词, 让更多人来涩涩吧!
+[分享你的提示词](https://github.com/oovm/NAI/discussions), 让更多人来涩涩吧!
 
 ### 下载
 
-打开 release 下载可执行文件.
+打开 [release 页面](https://github.com/oovm/NAI/releases) 下载可执行文件.
 
 首次使用需要配置: [图文帮助](projects/nai-cli/Readme.md)
 
@@ -22,6 +22,12 @@ nai.exe new  # 常规版
 nai.exe ss   # 涩涩版
 ```
 
+如果正常, 会显示:
+
+
+
+然后生成文件
+
 ### 高级模式
 
 ```sh
@@ -30,3 +36,4 @@ nai.exe new miku 'miku' -n -5 # 出五张 miku 的图
 ```
 
 ### FAQ
+

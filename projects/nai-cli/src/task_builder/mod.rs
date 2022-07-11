@@ -1,9 +1,4 @@
-use std::{
-    env::current_exe,
-    fs::{create_dir, create_dir_all},
-    io::Write,
-    path::PathBuf,
-};
+use std::{env::current_exe, fs::create_dir_all, io::Write, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tokio::{fs::File, io::AsyncWriteExt};
@@ -41,9 +36,14 @@ impl TaskBuilder {
         }
         Ok(())
     }
+    async fn addition_mode(self) -> NaiResult {
+        println!("追加模式",);
+        Ok(())
+    }
+
     pub async fn task(self, i: u32, nai: NaiSecret) -> NaiResult {
         if self.dir_name.exists() {
-            return Ok(());
+            // return self.addition_mode();
         }
         let mut request = self.request();
         let idx = 100 + i;

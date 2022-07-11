@@ -5,7 +5,7 @@ use rand::{thread_rng, Rng};
 
 use novel_ai::{NaiResult, NaiSecret};
 
-use crate::{builtin::BUILTIN_PROMPTS, task_builder::TaskBuilder, CommandArgs, Commands, NaiConfig, Prompts};
+use crate::{builtin::BUILTIN_PROMPTS, task_builder::TaskBuilder, CommandArgs, Commands, NaiConfig};
 
 impl CommandArgs {
     pub fn prepare_tasks(mut self, secret: NaiSecret, kind: &str) -> Vec<impl Future<Output = NaiResult>> {
