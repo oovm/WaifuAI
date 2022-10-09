@@ -3,12 +3,12 @@ use super::*;
 /// `GET /guilds/{guild_id}/channels`
 /// <https://bot.q.qq.com/wiki/develop/api/openapi/guild/get_guild.html>
 #[derive(Serialize, Deserialize, Debug)]
-pub struct GetChannelResponse {
+pub struct GetChannelListResponse {
     code: i32,
     message: String,
 }
 
-impl GetChannelResponse {
+impl GetChannelListResponse {
     pub async fn send(key: &SecretKey) -> AckermanResult<Self> {
         let request_url = if cfg!(debug_assertions) {
             format!("https://sandbox.api.sgroup.qq.com/guilds/{guild_id}/channels", guild_id = key.guild_id())
@@ -24,7 +24,7 @@ impl GetChannelResponse {
             .timeout(Duration::from_secs(3))
             .send()
             .await?;
-        let out: GetChannelResponse = response.json().await?;
+        let out: GetChannelListResponse = response.json().await?;
         return Ok(out);
     }
 }

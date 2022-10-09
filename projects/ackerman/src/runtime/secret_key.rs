@@ -21,8 +21,8 @@ impl SecretKey {
     pub fn load(path: impl AsRef<Path>) -> AckermanResult<Self> {
         Ok(from_str(&read_to_string(path)?)?)
     }
-    pub fn has_channel_id(&self) -> bool {
-        if cfg!(debug_assertions) { self.test.channel_id != 0 } else { self.deploy.channel_id != 0 }
+    pub fn channel_id(&self) -> u64 {
+        if cfg!(debug_assertions) { self.test.channel_id } else { self.deploy.channel_id }
     }
     pub fn guild_id(&self) -> u64 {
         if cfg!(debug_assertions) { self.test.guild_id } else { self.deploy.guild_id }

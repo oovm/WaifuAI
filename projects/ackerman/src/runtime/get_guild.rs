@@ -1,4 +1,5 @@
 use super::*;
+use chrono::{NaiveDateTime, Utc};
 use reqwest::{Method, RequestBuilder};
 use serde::{de::Error, Deserializer};
 use std::str::FromStr;
@@ -7,33 +8,13 @@ use url::{ParseError, Url};
 
 /// `GET /users/@me/guilds`
 ///
-/// <https://bot.q.qq.com/wiki/develop/api/openapi/user/guilds.html#%E8%8E%B7%E5%8F%96%E7%94%A8%E6%88%B7%E9%A2%91%E9%81%93%E5%88%97%E8%A1%A8>
-#[derive(Deserialize, Debug)]
-pub struct GetGuildResponse {
-    name: String,
-    description: String,
-    #[serde(deserialize_with = "read_icon")]
-    icon: Url,
-    id: u64,
-    max_members: u32,
-    member_count: u32,
-    owner: bool,
-    owner_id: u64,
-    joined_at: Datetime,
+/// <https://bot.q.qq.com/wiki/develop/api/openapi/user/guilds.html>
+#[derive(Debug)]
+pub struct GetGuildListResponse {
+    pub items: Vec<GetGuildItem>,
 }
 
-fn read_icon<'de, D>(deserializer: D) -> Result<Url, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: &str = Deserialize::deserialize(deserializer)?;
-    match Url::from_str(s) {
-        Ok(o) => Ok(o),
-        Err(e) => Err(Error::custom(format!("{}", e))),
-    }
-}
-
-impl GetGuildResponse {
+impl GetGuildListResponse {
     pub fn end_point() -> String {
         if cfg!(debug_assertions) {
             format!("https://sandbox.api.sgroup.qq.com/users/@me/guilds")
@@ -45,34 +26,65 @@ impl GetGuildResponse {
     pub async fn send(key: &SecretKey) -> AckermanResult<Self> {
         let url = Url::from_str(&Self::end_point())?;
         let response = key.as_request(Method::GET, url).send().await?;
-        Ok(response.json().await?)
+        Ok(Self { items: response.json().await? })
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct GetGuildItem {
-    /// 子频道 id
-    id: String,
-    /// 频道 id
-    guild_id: String,
-    /// 子频道名
-    name: String,
-    /// 子频道类型 ChannelType
-    r#type: u32,
-    /// 子频道子类型 ChannelSubType
-    sub_type: u32,
-    /// 排序值，具体请参考 有关 position 的说明
-    position: u32,
-    /// 所属分组 id，仅对子频道有效，对 子频道分组（ChannelType=4） 无效
-    parent_id: String,
-    /// 创建人 id
-    owner_id: String,
-    /// 子频道私密类型 PrivateType
-    private_type: u32,
-    /// 子频道发言权限 SpeakPermission
-    speak_permission: u32,
-    /// 用于标识应用子频道应用类型，仅应用子频道时会使用该字段，具体定义请参考 应用子频道的应用类型
-    application_id: String,
-    /// 用户拥有的子频道权限 Permissions
-    permissions: String,
+    /// 频道名称
+    pub name: String,
+    /// 描述
+    pub description: String,
+    /// 频道头像地址
+    #[serde(deserialize_with = "read_url")]
+    pub icon: Url,
+    /// 频道ID
+    #[serde(deserialize_with = "read_u64")]
+    pub id: u64,
+    /// 	最大成员数
+    pub max_members: u32,
+    /// 成员数
+    pub member_count: u32,
+    /// 当前人是否是创建人
+    pub owner: bool,
+    /// 创建人用户ID
+    #[serde(deserialize_with = "read_u64")]
+    pub owner_id: u64,
+    /// 加入时间
+    #[serde(deserialize_with = "read_date")]
+    pub joined_at: Datetime,
+}
+
+fn read_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+    match u64::from_str(s) {
+        Ok(o) => Ok(o),
+        Err(e) => Err(Error::custom(format!("{}", e))),
+    }
+}
+
+fn read_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+    match Url::from_str(s) {
+        Ok(o) => Ok(o),
+        Err(e) => Err(Error::custom(format!("{}", e))),
+    }
+}
+
+fn read_date<'de, D>(deserializer: D) -> Result<Datetime, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+    match Datetime::from_str(s) {
+        Ok(o) => Ok(o),
+        Err(e) => Err(Error::custom(format!("{}", e))),
+    }
 }
