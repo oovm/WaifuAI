@@ -20,10 +20,10 @@ async fn main() -> AckermanResult {
     }
     if key.channel_id() == 0 {
         let out = GetChannelListResponse::send(&key).await?;
-        println!("可行的频道有: {:#?}", out);
-        // for item in out.items {
-        //     println!("{}: {}", item.name, item.id)
-        // }
+        println!("可行的子频道有: {:#?}", out);
+        for item in out.items {
+            println!("{}: {}", item.name, item.id)
+        }
         return Ok(());
     }
     Ok(())
