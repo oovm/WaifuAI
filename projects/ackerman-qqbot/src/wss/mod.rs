@@ -1,7 +1,10 @@
 use crate::QQBotProtocol;
 use async_trait::async_trait;
 use chrono::Utc;
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{
+    stream::{SplitSink, SplitStream},
+    SinkExt, StreamExt,
+};
 use reqwest::{Method, RequestBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string, Value};
@@ -21,12 +24,14 @@ use url::Url;
 use crate::{AckermanResult, QQSecret};
 
 pub use self::{
+    connect_event::ConnectEvent,
     emoji_event::EmojiEvent,
     heartbeat_event::HeartbeatEvent,
     message_event::{MessageAttachment, MessageEvent},
     ready_event::LoginEvent,
 };
 
+mod connect_event;
 mod emoji_event;
 mod heartbeat_event;
 mod message_event;
@@ -74,20 +79,13 @@ pub struct QQBotOperation {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum EventDispatcher {
+    Connect(ConnectEvent),
+    LoginReady(LoginEvent),
+    Heartbeat(HeartbeatEvent),
     Message(MessageEvent),
-    Dispatch(QQBotOperationDispatch),
-    HeartbeatEvent(HeartbeatEvent),
-    LoginReadyEvent(LoginEvent),
-    EmojiEvent(EmojiEvent),
+    Emoji(EmojiEvent),
+    NeedBeat(u32),
     MaybeFail(bool),
-    Integer(u32),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct QQBotOperationDispatch {
-    token: String,
-    intents: u32,
-    shard: Vec<u32>,
 }
 
 impl Default for EventDispatcher {
@@ -96,7 +94,7 @@ impl Default for EventDispatcher {
     }
 }
 
-impl Default for QQBotOperationDispatch {
+impl Default for ConnectEvent {
     fn default() -> Self {
         Self { token: "".to_string(), intents: 0, shard: vec![] }
     }
@@ -107,14 +105,14 @@ where
     T: QQBotProtocol,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let tcp_stream = match self.wss.get_ref() {
-            MaybeTlsStream::Plain(s) => s.peer_addr().unwrap(),
-            MaybeTlsStream::NativeTls(t) => t.get_ref().get_ref().get_ref().peer_addr().unwrap(),
-            _ => SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
-        };
+        // let tcp_stream = match self.wss.get_ref() {
+        //     MaybeTlsStream::Plain(s) => s.peer_addr().unwrap(),
+        //     MaybeTlsStream::NativeTls(t) => t.get_ref().get_ref().get_ref().peer_addr().unwrap(),
+        //     _ => SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        // };
         f.debug_struct("QQBotWebsocket")
             .field("config", self.wss.get_config())
-            .field("socket", &tcp_stream)
+            // .field("socket", &tcp_stream)
             .field("connected", &self.connected)
             .finish()
     }
@@ -162,19 +160,19 @@ where
         };
         match received.op {
             0 => match received.d {
-                EventDispatcher::Dispatch(v) => {
+                EventDispatcher::Connect(v) => {
                     println!("    鉴权成功, 登陆为 {:?}", v);
                 }
                 EventDispatcher::Message(msg) => self.bot.on_message(msg).await?,
-                EventDispatcher::LoginReadyEvent(msg) => self.bot.on_login_success(msg).await?,
-                EventDispatcher::EmojiEvent(msg) => self.bot.on_emoji(msg).await?,
+                EventDispatcher::LoginReady(msg) => self.bot.on_login_success(msg).await?,
+                EventDispatcher::Emoji(msg) => self.bot.on_emoji(msg).await?,
                 _ => unreachable!(),
             },
             // 要求重新链接
             7 => self.relink().await?,
             9 => self.bot.on_login_failure().await?,
             10 => match received.d {
-                EventDispatcher::HeartbeatEvent(time) => {
+                EventDispatcher::Heartbeat(time) => {
                     self.heartbeat_id = received.s;
                     self.bot.on_connected(time).await?;
                 }
@@ -196,7 +194,7 @@ where
     pub async fn send_heartbeat(&mut self) -> AckermanResult<()> {
         let protocol = QQBotOperation {
             op: 1,
-            d: EventDispatcher::Integer(self.heartbeat_id),
+            d: EventDispatcher::NeedBeat(self.heartbeat_id),
             s: 0,
             t: "".to_string(),
             id: "".to_string(),
@@ -212,7 +210,7 @@ where
             op: 2,
             s: 0,
             t: "".to_string(),
-            d: EventDispatcher::Dispatch(QQBotOperationDispatch {
+            d: EventDispatcher::Connect(ConnectEvent {
                 token: self.bot.build_bot_token(),
                 intents,
                 shard: vec![0, 1],
