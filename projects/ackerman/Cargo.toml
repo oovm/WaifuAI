@@ -11,10 +11,11 @@ edition = "2021"
 
 
 [dependencies]
-ackerman-qq = {version = "0.1.2", path = "../ackerman-qqbot"}
+qq-bot = {version = "0.0.0", path = "../ackerman-qqbot"}
 futures-util = "0.3.24"
 tokio = {version = "1.21.2", features = ["full"]}
 tokio-tungstenite = {version = "0.17.2", features = ["native-tls"]}
+async-trait = "0.1.57"
 
 [dev-dependencies]
 

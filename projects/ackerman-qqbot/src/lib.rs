@@ -1,12 +1,13 @@
 pub use self::{
-    errors::{AckermanError, AckermanResult},
+    bots::{QQBotProtocol, QQSecret, SimpleBot},
+    errors::{AckermanResult, QQError},
     wss::QQBotWebsocket,
 };
+pub use reqwest::RequestBuilder;
+pub use url::Url;
 
 pub mod bots;
 mod errors;
 pub mod restful;
 pub mod utils;
-mod wss;
-
-pub use self::restful::QQSecret;
+pub mod wss;
