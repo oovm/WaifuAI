@@ -2,7 +2,7 @@
 pub enum AckermanError {
     UnknownError,
     IOError(std::io::Error),
-    NetError(reqwest::Error),
+    NetError(String),
 }
 
 pub type AckermanResult<T = ()> = Result<T, AckermanError>;
@@ -27,6 +27,11 @@ impl From<url::ParseError> for AckermanError {
 
 impl From<reqwest::Error> for AckermanError {
     fn from(e: reqwest::Error) -> Self {
-        Self::NetError(e)
+        Self::NetError(e.to_string())
+    }
+}
+impl From<tokio_tungstenite::tungstenite::Error> for AckermanError {
+    fn from(e: tokio_tungstenite::tungstenite::Error) -> Self {
+        Self::NetError(e.to_string())
     }
 }

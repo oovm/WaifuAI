@@ -11,3 +11,4 @@ pub mod get_channel;
 pub mod get_guild;
 pub mod get_message;
 pub mod secret_key;
+pub mod send_message;
