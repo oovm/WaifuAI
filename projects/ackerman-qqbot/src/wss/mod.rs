@@ -1,5 +1,4 @@
 use futures_util::SinkExt;
-use json::JsonValue;
 use std::{
     fmt::{Debug, Formatter},
     str::FromStr,

@@ -1,12 +1,6 @@
-use std::str::FromStr;
-
 use futures_util::sink::SinkExt;
-use reqwest::{Method, Url};
-use tokio::net::TcpStream;
-use tokio_tungstenite::{connect_async, tungstenite::handshake::client::Response, MaybeTlsStream, WebSocketStream};
-use toml::Value;
 
-use ackerman::{AckermanResult, GetChannelListResponse, GetGuildListResponse, QQBotSecret, QQBotWebsocket};
+use ackerman_qq::{AckermanResult, GetChannelListResponse, GetGuildListResponse, QQBotSecret, QQBotWebsocket};
 
 #[tokio::main]
 async fn main() -> AckermanResult {
