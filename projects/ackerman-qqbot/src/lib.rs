@@ -8,4 +8,4 @@ pub mod restful;
 pub mod utils;
 mod wss;
 
-pub use self::restful::QQBotSecret;
+pub use self::restful::QQSecret;
