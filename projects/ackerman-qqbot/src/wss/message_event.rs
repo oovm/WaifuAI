@@ -1,3 +1,8 @@
+use std::{path::PathBuf, time::Duration};
+
+use reqwest::{header::USER_AGENT, Client};
+use tokio::{fs::File, io::AsyncWriteExt};
+
 use super::*;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -47,5 +52,18 @@ pub struct MessageAttachment {
 }
 
 impl MessageAttachment {
-    pub async fn download(&self) {}
+    pub async fn download(&self, dir: &PathBuf) -> AckermanResult {
+        let url = Url::from_str(&format!("https://{}", self.url))?;
+        let request = Client::default()
+            .request(Method::GET, url)
+            .header(USER_AGENT, "BotNodeSDK/v2.9.4")
+            .timeout(Duration::from_secs(30));
+        let bytes = request.send().await?.bytes().await?;
+        println!("    下载图片 {}", self.filename);
+        let path = dir.join(&self.filename);
+        let mut file = File::create(path).await?;
+        file.write_all(&bytes).await?;
+        println!("    下载完成");
+        Ok(())
+    }
 }
