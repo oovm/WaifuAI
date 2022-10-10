@@ -1,10 +1,10 @@
 use super::*;
-use chrono::{NaiveDateTime, Utc};
-use reqwest::{Method, RequestBuilder};
-use serde::{de::Error, Deserializer};
+
+use reqwest::{Method};
+
 use std::str::FromStr;
-use toml::{value::Datetime, Value};
-use url::{ParseError, Url};
+
+use url::{Url};
 
 /// `GET /users/@me/guilds`
 ///

@@ -1,11 +1,10 @@
 use std::{
-    borrow::Borrow,
     fmt::{Debug, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
