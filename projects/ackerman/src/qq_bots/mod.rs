@@ -1,18 +1,7 @@
-use std::{
-    collections::BTreeMap,
-    fs::File,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{collections::BTreeMap, fs, path::PathBuf};
 
 use async_trait::async_trait;
-use formdata::{FilePart, FormData};
-use hyper::header::Headers;
-use qq_bot::{
-    restful::SendMessageRequest,
-    wss::{MessageAttachment, MessageEvent},
-    AckermanResult, QQBotProtocol, QQSecret, RequestBuilder, Url,
-};
+use qq_bot::{restful::SendMessageRequest, wss::MessageEvent, AckermanResult, QQBotProtocol, QQSecret, RequestBuilder, Url};
 use tokio_tungstenite::tungstenite::http::Method;
 
 pub use self::image_request::NovelAIRequest;
@@ -25,6 +14,15 @@ pub struct AckermanQQBot {
 }
 
 impl AckermanQQBot {
+    pub fn ensure_path(&self) -> AckermanResult {
+        if !self.target_dir().exists() {
+            fs::create_dir(self.target_dir())?
+        }
+        Ok(())
+    }
+    pub fn target_dir(&self) -> PathBuf {
+        self.here.join("target/ackerman/")
+    }
     async fn on_normal_message(&mut self, event: MessageEvent) -> AckermanResult {
         println!("    常规消息 {:#?}", event.content);
         Ok(())
@@ -79,30 +77,20 @@ impl QQBotProtocol for AckermanQQBot {
     }
     async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
         match event.content.as_str() {
-            s if s.starts_with("\\waifu") => {
-                let image = self.waifu_image_request(&s["\\waifu".len()..s.len()])?;
-
-                Ok(())
-            }
-            s if s.starts_with(".waifu") => {
-                let image = self.waifu_image_request(&s[".waifu".len()..s.len()])?;
-                Ok(())
-            }
-            s if s.starts_with("。waifu") => {
-                let tags = self.waifu_image_request(&s["。waifu".len()..s.len()])?;
+            s if s.starts_with("waifu") => {
+                let tags = self.waifu_image_request(&s["waifu".len()..s.len()])?;
                 if !tags.is_empty() {
                     match event.attachments.first() {
                         None => {}
-                        Some(s) => {
-                            let path = PathBuf::from("target/tmp");
-                            s.download(&path).await?
-                        }
+                        Some(s) => s.download(&self.target_dir()).await?,
                     }
-                    println!("{:?}", std::env::current_dir().unwrap());
-                    let image_path = PathBuf::from_str("/target/tmp/{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg..jpeg").unwrap();
-                    println!("{}", image_path.exists());
-                    let req =
-                        SendMessageRequest { msg_id: event.id, content: format!("{:#?}", tags), file_image: Some(image_path) };
+                    let image_path = self.target_dir().join("{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg");
+                    let req = SendMessageRequest {
+                        msg_id: event.id,
+                        content: format!("{:#?}", tags),
+                        image_path,
+                        file_image: "photo".to_string(),
+                    };
                     req.send(self, event.channel_id, event.author.id).await?;
                 }
                 else {

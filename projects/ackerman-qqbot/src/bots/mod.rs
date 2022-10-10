@@ -13,7 +13,7 @@ use serde::Deserialize;
 use url::Url;
 
 use crate::{
-    wss::{HeartbeatEvent, LoginEvent, MessageEvent},
+    wss::{EmojiEvent, HeartbeatEvent, LoginEvent, MessageEvent},
     AckermanResult,
 };
 
@@ -66,6 +66,11 @@ pub trait QQBotProtocol: Send {
     async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
         println!("[{}] 协议 0", current_time());
         println!("    收到消息, 发送者为 {:?}", event.author.username);
+        Ok(())
+    }
+    async fn on_emoji(&mut self, event: EmojiEvent) -> AckermanResult {
+        println!("[{}] 协议 0", current_time());
+        println!("    发送表情 {:?}", event.emoji.id);
         Ok(())
     }
 }

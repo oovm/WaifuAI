@@ -11,6 +11,7 @@ async fn main() -> AckermanResult {
     let key = QQSecret::load_toml("key.toml")?;
     let here = std::env::current_dir()?;
     let bot = AckermanQQBot { secret: key, here };
+    bot.ensure_path()?;
 
     let mut wss = QQBotWebsocket::link(bot).await?;
     let mut heartbeat = interval(Duration::from_secs_f32(30.0));
