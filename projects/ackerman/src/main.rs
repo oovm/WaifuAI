@@ -10,9 +10,7 @@ use qq_bot::{QQBotWebsocket, QQResult, QQSecret};
 async fn main() -> QQResult {
     let key = QQSecret::load_toml("key.toml")?;
     let here = std::env::current_dir()?;
-    let bot = AckermanQQBot { secret: key, here };
-    bot.ensure_path()?;
-
+    let bot = AckermanQQBot::new(here, key)?;
     let mut wss = QQBotWebsocket::link(bot).await?;
     let mut heartbeat = interval(Duration::from_secs_f32(30.0));
     wss.send_identify().await?;
