@@ -12,11 +12,12 @@ pub struct AckermanQQBot {
     pub secret: QQSecret,
     pub here: PathBuf,
     pub cn_tags: BTreeMap<String, String>,
+    pub users: DashMap<String, i32>,
 }
 
 impl AckermanQQBot {
     pub fn new(work_dir: PathBuf, secret: QQSecret) -> QQResult<Self> {
-        let mut out = Self { secret, here: work_dir, cn_tags: BTreeMap::default() };
+        let mut out = Self { secret, here: work_dir, cn_tags: BTreeMap::default(), users: Default::default() };
         out.ensure_path()?;
         for line in include_str!("dict.txt").lines() {
             if let Some((cn, en)) = line.split_once(",") {

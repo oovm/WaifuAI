@@ -16,8 +16,7 @@ futures-util = "0.3.24"
 tokio = {version = "1.21.2", features = ["full"]}
 tokio-tungstenite = {version = "0.17.2", features = ["native-tls"]}
 async-trait = "0.1.57"
-formdata = "0.13.0"
-hyper = "0.10.6"
+dashmap = "5.4.0"
 
 [dev-dependencies]
 
