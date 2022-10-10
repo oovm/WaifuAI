@@ -8,6 +8,7 @@ pub struct MessageEvent {
     #[serde(deserialize_with = "crate::utils::read_u64")]
     pub channel_id: u64,
     pub author: MessageAuthor,
+    #[serde(default)]
     pub content: String,
     pub member: MessageMember,
     pub seq: i64,
@@ -36,11 +37,15 @@ pub struct MessageAuthor {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MessageAttachment {
-    id: String,
-    content_type: String,
-    filename: String,
-    height: u32,
-    width: u32,
-    size: u32,
-    url: String,
+    pub id: String,
+    pub content_type: String,
+    pub filename: String,
+    pub height: u32,
+    pub width: u32,
+    pub size: u32,
+    pub url: String,
+}
+
+impl MessageAttachment {
+    pub async fn download(&self) {}
 }

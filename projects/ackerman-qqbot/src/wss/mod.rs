@@ -20,7 +20,11 @@ use url::Url;
 
 use crate::{AckermanResult, QQSecret};
 
-pub use self::{heartbeat_event::HeartbeatEvent, message_event::MessageEvent, ready_event::LoginEvent};
+pub use self::{
+    heartbeat_event::HeartbeatEvent,
+    message_event::{MessageAttachment, MessageEvent},
+    ready_event::LoginEvent,
+};
 
 mod heartbeat_event;
 mod message_event;
@@ -131,6 +135,15 @@ where
         let (wss, _) = connect_async(&connected.url).await?;
         Ok(Self { wss, bot, connected, heartbeat_id: 0, closed: false })
     }
+    pub async fn relink(&mut self) -> AckermanResult {
+        let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
+        let request = self.bot.build_request(Method::GET, url);
+        let connected: QQBotConnected = request.send().await?.json().await?;
+        let (wss, _) = connect_async(&connected.url).await?;
+        self.wss = wss;
+        self.closed = false;
+        Ok(())
+    }
     pub async fn next(&mut self) -> Option<Result<Message, Error>> {
         self.wss.next().await
     }
@@ -160,6 +173,8 @@ where
                 EventDispatcher::LoginReadyEvent(msg) => self.bot.on_login_success(msg).await?,
                 _ => unreachable!(),
             },
+            // 要求重新链接
+            7 => self.relink().await?,
             9 => self.bot.on_login_failure().await?,
             10 => match received.d {
                 EventDispatcher::HeartbeatEvent(time) => {
