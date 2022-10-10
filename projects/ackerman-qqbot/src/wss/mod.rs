@@ -1,4 +1,3 @@
-use chrono::Utc;
 use std::{
     borrow::Borrow,
     fmt::{Debug, Formatter},
@@ -6,6 +5,7 @@ use std::{
     str::FromStr,
 };
 
+use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,18 @@ pub struct SessionStartLimit {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct QQBotOperation {
     op: u32,
+    #[serde(default)]
+    s: u32,
+    #[serde(default)]
+    t: String,
     d: QQBotOperationUnion,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct User {
+    pub id: String,
+    pub username: String,
+    pub bot: bool,
 }
 
 impl QQBotOperation {
@@ -59,6 +70,7 @@ impl QQBotOperation {
 pub enum QQBotOperationUnion {
     Dispatch(QQBotOperationDispatch),
     Boolean(bool),
+    Integer(i32),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -71,6 +83,12 @@ pub struct QQBotOperationDispatch {
     shard: Vec<u32>,
     #[serde(default)]
     heartbeat_interval: u32,
+    #[serde(default)]
+    pub version: i64,
+    #[serde(default)]
+    pub session_id: String,
+    #[serde(default)]
+    pub user: User,
 }
 impl Default for QQBotOperationUnion {
     fn default() -> Self {
@@ -80,7 +98,15 @@ impl Default for QQBotOperationUnion {
 
 impl Default for QQBotOperationDispatch {
     fn default() -> Self {
-        Self { token: "".to_string(), intents: 0, shard: vec![], heartbeat_interval: 40000 }
+        Self {
+            token: "".to_string(),
+            intents: 0,
+            shard: vec![],
+            heartbeat_interval: 40000,
+            version: 0,
+            session_id: "".to_string(),
+            user: Default::default(),
+        }
     }
 }
 
@@ -122,34 +148,51 @@ impl QQBotWebsocket {
             }
             None => return Ok(()),
         };
-        println!("[{}] 协议 {}", Utc::now(), op.op);
+        println!("[{}] 协议 {}", Utc::now().format("%F %H:%M:%S"), op.op);
         match op.op {
+            0 => {
+                println!("    鉴权成功, 登陆为 {:?}", op.dispatched().user.username);
+            }
             9 => {
-                println!("    重连参数有误");
+                println!("    鉴权参数有误");
             }
             10 => {
                 self.heartbeat_interval = op.dispatched().heartbeat_interval;
                 println!("    重设心跳间隔为 {}", self.heartbeat_interval);
             }
+            // 接收到心跳包
+            11 => {}
             _ => {
-                println!("{:#?}", op);
+                println!("未知协议 {:#?}", op);
             }
         }
 
         Ok(())
     }
+    pub async fn send_heartbeat(&mut self) -> AckermanResult<()> {
+        println!("[{}] 协议 1", Utc::now().format("%F %H:%M:%S"));
+        let protocol = QQBotOperation { op: 1, s: 0, t: "".to_string(), d: QQBotOperationUnion::Integer(100) };
+        self.wss.send(Message::Text(to_string(&protocol)?)).await?;
+        println!("    发送心跳包",);
+        Ok(())
+    }
     pub async fn send_identify(&mut self) -> AckermanResult<()> {
-        let op = QQBotOperation {
-            //
+        println!("[{}] 协议 2", Utc::now().format("%F %H:%M:%S"));
+        let intents = 1 << 9 | 1 << 10 | 1 << 26 | 1 << 30;
+        let protocol = QQBotOperation {
             op: 2,
+            s: 0,
+            t: "".to_string(),
             d: QQBotOperationUnion::Dispatch(QQBotOperationDispatch {
                 token: self.key.bot_token(),
-                intents: 0,
-                shard: vec![0],
+                intents,
+                shard: vec![0, 1],
                 ..Default::default()
             }),
         };
-        self.wss.send(Message::Text(to_string(&op)?)).await?;
+        println!("    监听掩码 {}", intents);
+        self.wss.send(Message::Text(to_string(&protocol)?)).await?;
+        println!("    首次连接鉴权");
         Ok(())
     }
 }
