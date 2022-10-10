@@ -3,6 +3,7 @@ pub use self::{
     wss::QQBotWebsocket,
 };
 
+pub mod bots;
 mod errors;
 pub mod restful;
 pub mod utils;
