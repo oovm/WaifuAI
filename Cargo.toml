@@ -2,6 +2,7 @@
 members = ["projects/*"]
 default-members = [
     "projects/ackerman",
+    "projects/ackerman-qqbot",
 ]
 exclude = [
     "projects/.DS_Store",
@@ -9,4 +10,4 @@ exclude = [
 
 [profile.release]
 lto = true
-panic = "abort"
+#panic = "abort"
