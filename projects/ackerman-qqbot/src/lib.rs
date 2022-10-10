@@ -1,6 +1,6 @@
 pub use self::{
     bots::{QQBotProtocol, QQSecret, SimpleBot},
-    errors::{AckermanResult, QQError},
+    errors::{QQError, QQResult},
     wss::QQBotWebsocket,
 };
 pub use reqwest::RequestBuilder;

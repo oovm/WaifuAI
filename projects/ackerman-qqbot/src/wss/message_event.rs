@@ -52,7 +52,7 @@ pub struct MessageAttachment {
 }
 
 impl MessageAttachment {
-    pub async fn download(&self, dir: &PathBuf) -> AckermanResult {
+    pub async fn download(&self, dir: &PathBuf) -> QQResult {
         let url = Url::from_str(&format!("https://{}", self.url))?;
         let request = Client::default()
             .request(Method::GET, url)

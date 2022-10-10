@@ -4,10 +4,10 @@ use tokio::{
     time::{interval, Duration},
 };
 
-use qq_bot::{AckermanResult, QQBotWebsocket, QQSecret};
+use qq_bot::{QQBotWebsocket, QQResult, QQSecret};
 
 #[tokio::main]
-async fn main() -> AckermanResult {
+async fn main() -> QQResult {
     let key = QQSecret::load_toml("key.toml")?;
     let here = std::env::current_dir()?;
     let bot = AckermanQQBot { secret: key, here };

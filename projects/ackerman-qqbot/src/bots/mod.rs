@@ -14,7 +14,7 @@ use url::Url;
 
 use crate::{
     wss::{EmojiEvent, HeartbeatEvent, LoginEvent, MessageEvent},
-    AckermanResult,
+    QQResult,
 };
 
 mod secret_key;
@@ -43,32 +43,32 @@ fn current_time<'a>() -> DelayedFormat<StrftimeItems<'a>> {
 pub trait QQBotProtocol: Send {
     fn build_bot_token(&self) -> String;
     fn build_request(&self, method: Method, url: Url) -> RequestBuilder;
-    async fn on_connected(&mut self, event: HeartbeatEvent) -> AckermanResult {
+    async fn on_connected(&mut self, event: HeartbeatEvent) -> QQResult {
         println!("[{}] 协议 10", current_time());
         println!("    已连接");
         Ok(())
     }
-    async fn on_login_success(&mut self, event: LoginEvent) -> AckermanResult {
+    async fn on_login_success(&mut self, event: LoginEvent) -> QQResult {
         println!("[{}] 协议 9", current_time());
         println!("    登录成功, 登陆为 {:?}", event.user.username);
         Ok(())
     }
-    async fn on_login_failure(&mut self) -> AckermanResult {
+    async fn on_login_failure(&mut self) -> QQResult {
         println!("[{}] 协议 9", current_time());
         println!("    鉴权参数有误");
         Ok(())
     }
-    async fn on_heartbeat(&mut self, heartbeat_id: u32) -> AckermanResult {
+    async fn on_heartbeat(&mut self, heartbeat_id: u32) -> QQResult {
         println!("[{}] 协议 1", current_time());
         println!("    发送心跳包 {}", heartbeat_id);
         Ok(())
     }
-    async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
+    async fn on_message(&mut self, event: MessageEvent) -> QQResult {
         println!("[{}] 协议 0", current_time());
         println!("    收到消息, 发送者为 {:?}", event.author.username);
         Ok(())
     }
-    async fn on_emoji(&mut self, event: EmojiEvent) -> AckermanResult {
+    async fn on_emoji(&mut self, event: EmojiEvent) -> QQResult {
         println!("[{}] 协议 0", current_time());
         println!("    消息 {} 表情变动", event.target.id);
         Ok(())
@@ -88,11 +88,11 @@ impl QQBotProtocol for SimpleBot {
     fn build_request(&self, method: Method, url: Url) -> RequestBuilder {
         self.secret.as_request(method, url)
     }
-    async fn on_connected(&mut self, event: HeartbeatEvent) -> AckermanResult {
+    async fn on_connected(&mut self, event: HeartbeatEvent) -> QQResult {
         self.heartbeat_interval = event.heartbeat_interval;
         Ok(())
     }
-    async fn on_message(&mut self, event: MessageEvent) -> AckermanResult {
+    async fn on_message(&mut self, event: MessageEvent) -> QQResult {
         // event.content
         println!("收到消息 {:#?}", event);
         Ok(())

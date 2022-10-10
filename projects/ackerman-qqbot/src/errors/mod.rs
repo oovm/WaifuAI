@@ -5,7 +5,7 @@ pub enum QQError {
     NetError(String),
 }
 
-pub type AckermanResult<T = ()> = Result<T, QQError>;
+pub type QQResult<T = ()> = Result<T, QQError>;
 
 impl From<std::io::Error> for QQError {
     fn from(e: std::io::Error) -> Self {
