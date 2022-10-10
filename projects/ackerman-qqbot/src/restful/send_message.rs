@@ -53,10 +53,10 @@ pub struct MessageItem {
     /// 描述
     pub description: String,
     /// 频道头像地址
-    #[serde(deserialize_with = "read_url")]
+    #[serde(deserialize_with = "crate::utils::read_url")]
     pub icon: Url,
     /// 频道ID
-    #[serde(deserialize_with = "read_u64")]
+    #[serde(deserialize_with = "crate::utils::read_u64")]
     pub id: u64,
     /// 	最大成员数
     pub max_members: u32,
@@ -65,9 +65,8 @@ pub struct MessageItem {
     /// 当前人是否是创建人
     pub owner: bool,
     /// 创建人用户ID
-    #[serde(deserialize_with = "read_u64")]
+    #[serde(deserialize_with = "crate::utils::read_u64")]
     pub owner_id: u64,
     /// 加入时间
-    #[serde(deserialize_with = "read_date")]
-    pub joined_at: Datetime,
+    pub joined_at: String,
 }

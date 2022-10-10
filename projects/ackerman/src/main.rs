@@ -1,4 +1,5 @@
 use futures_util::sink::SinkExt;
+use tokio::time::{interval, Duration};
 
 use ackerman_qq::{
     restful::{GetChannelListResponse, GetGuildListResponse},
@@ -24,15 +25,18 @@ async fn main() -> AckermanResult {
         }
         return Ok(());
     }
-    // let out = GetMessageListResponse::send(&key).await?;
-    // println!("可行的子频道有: {:#?}", out);
     let mut wss = QQBotWebsocket::link(&key).await?;
-    wss.next_event().await.unwrap();
-    wss.send_identify().await.unwrap();
-    wss.next_event().await.unwrap();
-    wss.send_heartbeat().await.unwrap();
-    wss.next_event().await.unwrap();
-    wss.next_event().await.unwrap();
-    wss.next_event().await.unwrap();
-    Ok(())
+    let mut heartbeat = interval(Duration::from_secs_f32(30.0));
+
+    heartbeat.tick().await;
+    loop {
+        tokio::select! {
+            Some(event) = wss.next() => {
+                wss.dispatch(event).await?;
+            }
+            _ = heartbeat.tick() => {
+                 wss.send_heartbeat().await?;
+            },
+        }
+    }
 }
