@@ -1,6 +1,9 @@
 use futures_util::sink::SinkExt;
 
-use ackerman_qq::{AckermanResult, GetChannelListResponse, GetGuildListResponse, QQBotSecret, QQBotWebsocket};
+use ackerman_qq::{
+    restful::{GetChannelListResponse, GetGuildListResponse},
+    AckermanResult, QQBotSecret, QQBotWebsocket,
+};
 
 #[tokio::main]
 async fn main() -> AckermanResult {
@@ -24,11 +27,12 @@ async fn main() -> AckermanResult {
     // let out = GetMessageListResponse::send(&key).await?;
     // println!("可行的子频道有: {:#?}", out);
     let mut wss = QQBotWebsocket::link(&key).await?;
-    wss.next_event().await?;
-    wss.send_identify().await?;
-    wss.next_event().await?;
-    wss.next_event().await?;
-    wss.next_event().await?;
-    wss.next_event().await?;
+    wss.next_event().await.unwrap();
+    wss.send_identify().await.unwrap();
+    wss.next_event().await.unwrap();
+    wss.send_heartbeat().await.unwrap();
+    wss.next_event().await.unwrap();
+    wss.next_event().await.unwrap();
+    wss.next_event().await.unwrap();
     Ok(())
 }
