@@ -12,7 +12,7 @@ pub struct AckermanQQBot {
     pub secret: QQSecret,
     pub here: PathBuf,
     pub cn_tags: BTreeMap<String, String>,
-    pub users: DashMap<String, i32>,
+    pub users: DashMap<String, i64>,
 }
 
 impl AckermanQQBot {
@@ -47,9 +47,9 @@ impl AckermanQQBot {
         for tag in rest.split(|c| c == ',' || c == '，') {
             let tag = tag.trim().to_ascii_lowercase();
             match tag.as_str() {
-                "横" | "w" | "portrait" => image.aspect_ratio = 2.0,
-                "竖" | "h" | "landscape" => image.aspect_ratio = 0.5,
-                "方" | "s" | "square" => image.aspect_ratio = 1.0,
+                "横" | "w" | "landscape" => image.set_layout(2.0),
+                "竖" | "h" | "portrait" => image.set_layout(0.5),
+                "方" | "s" | "square" => image.set_layout(1.0),
                 s if s.starts_with("质量") => {}
                 s if s.starts_with("s") => {}
                 s if s.starts_with("step") => {}
