@@ -15,7 +15,7 @@ pub struct GetMessageListResponse {
 }
 
 impl GetMessageListResponse {
-    pub fn end_point(key: &SecretKey) -> String {
+    pub fn end_point(key: &QQBotSecret) -> String {
         if cfg!(debug_assertions) {
             format!(
                 "https://sandbox.api.sgroup.qq.com/channels/{channel_id}/messages",
@@ -31,7 +31,7 @@ impl GetMessageListResponse {
             )
         }
     }
-    pub async fn send(key: &SecretKey) -> AckermanResult<Self> {
+    pub async fn send(key: &QQBotSecret) -> AckermanResult<Self> {
         let url = Url::from_str(&Self::end_point(key))?;
         let response = key.as_request(Method::GET, url).send().await?;
         if response.status().as_u16() > 300 {

@@ -1,4 +1,4 @@
-use crate::{AckermanError, AckermanResult, SecretKey};
+use crate::{AckermanError, AckermanResult, QQBotSecret};
 use reqwest::{
     header::{AUTHORIZATION, USER_AGENT},
     Client,

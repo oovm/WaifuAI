@@ -2,8 +2,8 @@ use super::*;
 use reqwest::{Method, RequestBuilder};
 use url::Url;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SecretKey {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct QQBotSecret {
     bot_app_id: u64,
     bot_secret: String,
     bot_token: String,
@@ -17,7 +17,7 @@ pub struct ChannelIds {
     channel_id: u64,
 }
 
-impl SecretKey {
+impl QQBotSecret {
     pub fn load(path: impl AsRef<Path>) -> AckermanResult<Self> {
         Ok(from_str(&read_to_string(path)?)?)
     }

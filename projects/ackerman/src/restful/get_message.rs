@@ -6,32 +6,48 @@ use std::str::FromStr;
 use toml::{value::Datetime, Value};
 use url::{ParseError, Url};
 
-/// `GET /users/@me/guilds`
+/// `GET /channels/{channel_id}/messages/{message_id}`
 ///
-/// <https://bot.q.qq.com/wiki/develop/api/openapi/user/guilds.html>
+/// <https://bot.q.qq.com/wiki/develop/api/openapi/message/get_message_of_id.html>
 #[derive(Debug)]
-pub struct GetGuildListResponse {
-    pub items: Vec<GuildItem>,
+pub struct GetMessageListResponse {
+    pub items: Vec<MessageItem>,
 }
 
-impl GetGuildListResponse {
-    pub fn end_point() -> String {
+impl GetMessageListResponse {
+    pub fn end_point(key: &QQBotSecret) -> String {
         if cfg!(debug_assertions) {
-            format!("https://sandbox.api.sgroup.qq.com/users/@me/guilds")
+            format!(
+                "https://sandbox.api.sgroup.qq.com/channels/{channel_id}/messages",
+                channel_id = key.channel_id(),
+                //     message_id = 0
+            )
         }
         else {
-            format!("https://api.sgroup.qq.com/users/@me/guilds")
+            format!(
+                "https://api.sgroup.qq.com/channels/{channel_id}/messages",
+                channel_id = key.channel_id(),
+                //   message_id = 0
+            )
         }
     }
-    pub async fn send(key: &SecretKey) -> AckermanResult<Self> {
-        let url = Url::from_str(&Self::end_point())?;
+    pub async fn send(key: &QQBotSecret) -> AckermanResult<Self> {
+        let url = Url::from_str(&Self::end_point(key))?;
         let response = key.as_request(Method::GET, url).send().await?;
-        Ok(Self { items: response.json().await? })
+        if response.status().as_u16() > 300 {
+            println!("{}", response.status().as_u16())
+        }
+
+        let value: Value = response.json().await?;
+        println!("{:#?}", value);
+        todo!();
+
+        // Ok(Self { items: response.json().await? })
     }
 }
 
 #[derive(Deserialize, Debug)]
-pub struct GuildItem {
+pub struct MessageItem {
     /// 频道名称
     pub name: String,
     /// 描述
