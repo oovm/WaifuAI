@@ -12,8 +12,9 @@ use std::{
     fmt::{Debug, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
+    time::Duration,
 };
-use tokio::net::TcpStream;
+use tokio::{net::TcpStream, select, time::interval};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{Error, Message},
@@ -45,7 +46,7 @@ where
     wss: WebSocketStream<MaybeTlsStream<TcpStream>>,
     connected: QQBotConnected,
     heartbeat_id: u32,
-    pub closed: bool,
+    closed: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -139,13 +140,30 @@ where
         Ok(())
     }
     pub async fn run(&mut self) -> QQResult {
-        let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
-        let request = self.bot.build_request(Method::GET, url);
-        let connected: QQBotConnected = request.send().await?.json().await?;
-        let (wss, _) = connect_async(&connected.url).await?;
-        self.wss = wss;
-        self.closed = false;
-        Ok(())
+        self.send_identify().await?;
+        let mut heartbeat = interval(Duration::from_secs_f32(30.0));
+        loop {
+            select! {
+                listen = self.next() => {
+                    match listen {
+                        Some(event) =>{
+                            self.dispatch(event).await?;
+                        }
+                        None => {
+                            return Ok(())
+                        }
+                    }
+                },
+                _ = heartbeat.tick() => {
+                     if self.closed {
+                        return Ok(())
+                     }
+                     else {
+                        self.send_heartbeat().await?;
+                    }
+                },
+            }
+        }
     }
 
     pub async fn next(&mut self) -> Option<Result<Message, Error>> {
