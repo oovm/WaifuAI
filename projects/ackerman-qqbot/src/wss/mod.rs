@@ -1,12 +1,16 @@
-use futures_util::SinkExt;
 use std::{
     fmt::{Debug, Formatter},
+    net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
 };
 
+use futures_util::{
+    stream::{SplitSink, SplitStream},
+    SinkExt, StreamExt,
+};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
-use tokio::net::TcpStream;
+use tokio::{io::AsyncWriteExt, net::TcpStream};
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use url::Url;
 
@@ -48,7 +52,16 @@ pub struct QQBotOperationDispatch {
 
 impl Debug for QQBotWebsocket {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("QQBotWebsocket").field("config", self.wss.get_config()).field("connected", &self.connected).finish()
+        let tcp_stream = match self.wss.get_ref() {
+            MaybeTlsStream::Plain(s) => s.peer_addr().unwrap(),
+            MaybeTlsStream::NativeTls(t) => t.get_ref().get_ref().get_ref().peer_addr().unwrap(),
+            _ => SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        };
+        f.debug_struct("QQBotWebsocket")
+            .field("config", self.wss.get_config())
+            .field("socket", &tcp_stream)
+            .field("connected", &self.connected)
+            .finish()
     }
 }
 
@@ -60,9 +73,24 @@ impl QQBotWebsocket {
         Ok(Self { wss, key: key.clone(), connected: value })
     }
     pub async fn identify(&mut self) -> AckermanResult<Self> {
-        let op =
-            QQBotOperation { op: 2, d: QQBotOperationDispatch { token: self.key.bot_token(), intents: 0, shard: vec![0] } };
+        let op = QQBotOperation {
+            //
+            op: 2,
+            d: QQBotOperationDispatch { token: self.key.bot_token(), intents: 0, shard: vec![0] },
+        };
 
-        self.wss.send(Message::Text(op))
+        let (mut write, read) = self.wss.split();
+        println!("sending");
+        write.send(Message::Text(serde_json::to_string(&op)?)).await?;
+        println!("sent");
+        let read_future = read.for_each(|message| async {
+            println!("receiving...");
+            let data = message.unwrap().into_data();
+            tokio::io::stdout().write(&data).await.unwrap();
+            println!("received...");
+        });
+        read_future.await;
+
+        todo!()
     }
 }
