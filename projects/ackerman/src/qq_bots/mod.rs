@@ -140,13 +140,12 @@ impl QQBotProtocol for AckermanQQBot {
             s if s.starts_with("waifu") => {
                 let mut tags = self.waifu_image_request(&s["waifu".len()..s.len()])?;
                 if !tags.is_empty() {
-                    match event.attachments.first() {
-                        None => {}
-                        Some(s) => s.download(&self.target_dir()).await?,
+                    if let Some(s) = event.attachments.first() {
+                        let image = s.download(&self.target_dir()).await?;
+                        tags.set_reference_image(image)
                     }
                     let image_bytes = tags.nai_request(self).await?;
                     tags.nai_save(&self.target_dir(), &image_bytes).await?;
-
                     let req = SendMessageRequest {
                         msg_id: event.id, //
                         content: "".to_string(),
@@ -160,26 +159,7 @@ impl QQBotProtocol for AckermanQQBot {
                 }
                 Ok(())
             }
-            s if s.starts_with("furry") => {
-                let tags = self.waifu_image_request(&s["furry".len()..s.len()])?;
-                if !tags.is_empty() {
-                    match event.attachments.first() {
-                        None => {}
-                        Some(s) => s.download(&self.target_dir()).await?,
-                    }
-                    let req = SendMessageRequest {
-                        msg_id: event.id,
-                        content: "".to_string(),
-                        image_bytes: vec![],
-                        user_id: event.author.id,
-                    };
-                    req.send(self, event.channel_id).await?;
-                }
-                else {
-                    println!("    waifu 空请求");
-                }
-                Ok(())
-            }
+            s if s.starts_with("furry") => Ok(()),
             // 不要处理 @开头的事件
             s if s.starts_with("<@!") => Ok(()),
             _ => self.on_normal_message(event).await,
