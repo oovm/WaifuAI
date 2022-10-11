@@ -10,7 +10,7 @@ license = "MPL-2.0"
 edition = "2021"
 
 [dependencies]
-
+novel-ai = {version = "0.0.0", path = "../nai-api"}
 
 [dev-dependencies]
 

@@ -1,14 +1,11 @@
-use async_trait::async_trait;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::to_string;
 use std::{
-    collections::{hash_map::RandomState, BTreeMap},
-    fs,
-    fs::read_to_string,
+    collections::{hash_map::RandomState},
     hash::{BuildHasher, Hash, Hasher},
     io::Write,
-    path::{Path, PathBuf},
+    path::{PathBuf},
     str::FromStr,
     time::Duration,
 };
@@ -17,19 +14,18 @@ use tokio::{fs::File, io::AsyncWriteExt};
 mod image_request;
 
 #[derive(Debug, Hash)]
-pub struct ImageRequest {
+pub struct ImageRequestBuilder {
     tags: Vec<String>,
     layout: ImageLayout,
     kind: NovelAIKind,
     image: Vec<u8>,
 }
 
-impl Default for ImageRequest {
+impl Default for ImageRequestBuilder {
     fn default() -> Self {
         Self { tags: vec![], layout: ImageLayout::Portrait, kind: NovelAIKind::Anime, image: vec![] }
     }
 }
-
 
 #[derive(Debug, Hash)]
 pub enum NovelAIKind {
