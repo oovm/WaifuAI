@@ -2,7 +2,6 @@ use std::{
     collections::BTreeMap,
     fs,
     fs::read_to_string,
-    hash::{BuildHasher, Hash, Hasher},
     io::Write,
     path::{Path, PathBuf},
 };
@@ -10,7 +9,6 @@ use std::{
 use async_trait::async_trait;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncWriteExt;
 use tokio_tungstenite::tungstenite::http::Method;
 
 use qq_bot::{restful::SendMessageRequest, wss::MessageEvent, QQBotProtocol, QQResult, QQSecret, RequestBuilder, Url};

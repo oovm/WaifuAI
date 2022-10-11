@@ -20,11 +20,12 @@ use url::Url;
 use crate::{QQBotProtocol, QQResult};
 
 pub use self::{
-    connect_event::ConnectEvent,
+    connect_event::{ConnectEvent, QQBotConnected},
     emoji_event::EmojiEvent,
     heartbeat_event::HeartbeatEvent,
     message_event::{MessageAttachment, MessageEvent},
     ready_event::LoginEvent,
+    subscription_mask::Subscription,
 };
 
 mod connect_event;
@@ -32,6 +33,7 @@ mod emoji_event;
 mod heartbeat_event;
 mod message_event;
 mod ready_event;
+mod subscription_mask;
 
 pub struct QQBotWebsocket<T>
 where
@@ -42,21 +44,6 @@ where
     connected: QQBotConnected,
     heartbeat_id: u32,
     closed: bool,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct QQBotConnected {
-    shards: u32,
-    url: String,
-    session_start_limit: SessionStartLimit,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct SessionStartLimit {
-    max_concurrency: u32,
-    remaining: u32,
-    reset_after: u32,
-    total: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -235,7 +222,7 @@ where
     }
     pub async fn send_identify(&mut self) -> QQResult<()> {
         println!("[{}] 协议 2", Utc::now().format("%F %H:%M:%S"));
-        let intents = 1 << 9 | 1 << 10 | 1 << 26 | 1 << 30;
+        let intents = self.bot.subscription().bits();
         let protocol = QQBotOperation {
             op: 2,
             s: 0,
