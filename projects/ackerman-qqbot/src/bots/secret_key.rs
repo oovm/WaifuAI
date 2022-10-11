@@ -1,9 +1,6 @@
 use super::*;
 
 impl QQSecret {
-    pub fn load_toml(path: impl AsRef<Path>) -> QQResult<Self> {
-        Ok(toml::from_str(&read_to_string(path)?)?)
-    }
     pub fn channel_id(&self) -> u64 {
         if cfg!(debug_assertions) { self.test.channel_id } else { self.deploy.channel_id }
     }
@@ -15,9 +12,14 @@ impl QQSecret {
             .request(method, url)
             .header(USER_AGENT, "BotNodeSDK/v2.9.4")
             .header(AUTHORIZATION, self.bot_token())
+            // .bearer_auth(&self.bot_secret)
             .timeout(Duration::from_secs(3))
     }
     pub fn bot_token(&self) -> String {
         format!("Bot {}.{}", self.bot_app_id, self.bot_token)
+    }
+
+    pub fn bot_bearer(&self) -> String {
+        self.bot_secret.to_string()
     }
 }

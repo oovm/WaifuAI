@@ -1,4 +1,10 @@
-use std::{collections::BTreeMap, fs, io::Write, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    fs,
+    fs::read_to_string,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use async_trait::async_trait;
 use dashmap::DashMap;
@@ -12,7 +18,7 @@ mod image_request;
 #[derive(Serialize, Deserialize)]
 pub struct AckermanQQBot {
     #[serde(default)]
-    pub secret: QQSecret,
+    pub config: AckermanConfig,
     #[serde(default)]
     pub here: PathBuf,
     #[serde(default)]
@@ -21,9 +27,26 @@ pub struct AckermanQQBot {
     pub users: DashMap<String, i64>,
 }
 
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct AckermanConfig {
+    qq: QQSecret,
+    nai: NaiSecret,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct NaiSecret {
+    bearer: String,
+}
+
+impl AckermanConfig {
+    pub fn load_toml(path: impl AsRef<Path>) -> QQResult<Self> {
+        Ok(toml::from_str(&read_to_string(path)?)?)
+    }
+}
+
 impl AckermanQQBot {
-    pub fn new(work_dir: PathBuf, secret: QQSecret) -> QQResult<Self> {
-        let mut out = Self { secret, here: work_dir, cn_tags: BTreeMap::default(), users: Default::default() };
+    pub fn new(work_dir: PathBuf, config: AckermanConfig) -> QQResult<Self> {
+        let mut out = Self { config, here: work_dir, cn_tags: BTreeMap::default(), users: Default::default() };
         if out.database_path().exists() {
             let db = fs::read_to_string(out.database_path())?;
             out = serde_json::from_str(&db)?
@@ -48,7 +71,7 @@ impl AckermanQQBot {
         Ok(())
     }
     pub fn database_path(&self) -> PathBuf {
-        self.here.join("users.db")
+        self.here.join("target/ackerman/user.db")
     }
     pub fn target_dir(&self) -> PathBuf {
         self.here.join("target/ackerman/")
@@ -96,19 +119,22 @@ impl AckermanQQBot {
 #[async_trait]
 impl QQBotProtocol for AckermanQQBot {
     fn build_bot_token(&self) -> String {
-        self.secret.bot_token()
+        self.config.qq.bot_token()
     }
     fn build_request(&self, method: Method, url: Url) -> RequestBuilder {
-        self.secret.as_request(method, url)
+        self.config.qq.as_request(method, url)
     }
     async fn on_message(&mut self, event: MessageEvent) -> QQResult {
         match event.content.as_str() {
             s if s.starts_with("waifu") => {
                 let mut tags = self.waifu_image_request(&s["waifu".len()..s.len()])?;
                 if !tags.is_empty() {
-                    let content = tags;
                     tags.add_tag("best quality");
                     tags.add_tag("masterpiece");
+
+                    let image = tags.nai_request(self).await?;
+                    println!("{:#?}", image);
+
                     match event.attachments.first() {
                         None => {}
                         Some(s) => s.download(&self.target_dir()).await?,
