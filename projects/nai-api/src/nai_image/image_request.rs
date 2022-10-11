@@ -1,39 +1,32 @@
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-use serde_json::to_string;
-use std::{
-    collections::hash_map::RandomState,
-    hash::{BuildHasher, Hash, Hasher},
-    path::PathBuf,
-    str::FromStr,
-    time::Duration,
-};
-use tokio::{fs::File, io::AsyncWriteExt};
-use tokio_tungstenite::tungstenite::http::{header::CONTENT_TYPE, Method};
+use super::*;
 
-use qq_bot::{Client, QQError, QQResult, Url};
-
-use crate::qq_bots::AckermanQQBot;
-
-#[derive(Debug, Hash)]
-pub struct ImageRequest {
-    tags: Vec<String>,
-    layout: ImageLayout,
-    kind: NovelAIKind,
-    image: Vec<u8>,
+#[derive(Serialize, Deserialize)]
+struct Request {
+    pub input: String,
+    pub model: String,
+    pub parameters: Parameters,
 }
 
-#[derive(Debug, Hash)]
-pub enum NovelAIKind {
-    Anime = 0,
-    Furry = 1,
+#[derive(Serialize, Deserialize)]
+struct Parameters {
+    pub width: u64,
+    pub height: u64,
+    pub scale: u64,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub image: String,
+    pub sampler: String,
+    pub steps: u8,
+    pub n_samples: u8,
+    pub strength: f32,
+    pub noise: f32,
+    pub seed: u32,
+    #[serde(rename = "ucPreset")]
+    pub uc_preset: u64,
+    #[serde(rename = "qualityToggle")]
+    pub quality_toggle: bool,
+    pub uc: String,
 }
-#[derive(Debug, Hash)]
-pub enum ImageLayout {
-    Square = 0,
-    Portrait = 1,
-    Landscape = 2,
-}
+
 
 impl From<f32> for ImageLayout {
     fn from(v: f32) -> Self {
@@ -46,12 +39,6 @@ impl From<f32> for ImageLayout {
         else {
             Self::Square
         }
-    }
-}
-
-impl Default for ImageRequest {
-    fn default() -> Self {
-        Self { tags: vec![], layout: ImageLayout::Portrait, kind: NovelAIKind::Anime, image: vec![] }
     }
 }
 
@@ -117,7 +104,7 @@ impl ImageRequest {
         self.tags.join(",")
     }
 
-    fn nai_request_body(&self) -> NaiRequest {
+    fn nai_request_body(&self) -> Request {
         let mut rng = rand::thread_rng();
         let seed: u32 = rng.gen();
         let no_ref_image = self.image.is_empty();
@@ -149,7 +136,7 @@ impl ImageRequest {
         let strength = if no_ref_image { 0.9 } else { 0.6 };
         // 越大越遵守标签
         let scale = if no_ref_image { 11 } else { 13 };
-        NaiRequest {
+        Request {
             input: self.tags.join(","),
             model: model.to_string(),
             parameters: Parameters {
@@ -171,29 +158,3 @@ impl ImageRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct NaiRequest {
-    pub input: String,
-    pub model: String,
-    pub parameters: Parameters,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Parameters {
-    pub width: u64,
-    pub height: u64,
-    pub scale: u64,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub image: String,
-    pub sampler: String,
-    pub steps: u8,
-    pub n_samples: u8,
-    pub strength: f32,
-    pub noise: f32,
-    pub seed: u32,
-    #[serde(rename = "ucPreset")]
-    pub uc_preset: u64,
-    #[serde(rename = "qualityToggle")]
-    pub quality_toggle: bool,
-    pub uc: String,
-}

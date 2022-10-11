@@ -2,7 +2,7 @@
 members = ["projects/*"]
 default-members = [
     "projects/nai-api",
-    "projects/nai-cli",
+#    "projects/nai-cli",
 ]
 exclude = [
     "projects/.DS_Store",
