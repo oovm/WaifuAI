@@ -17,8 +17,71 @@ signature,
 watermark,
 username,
 blurry,
-学生,student uniform
-黑长直,long black hair
+box,
+明日方舟,arknights
+碧蓝航线,azur lane
+原神,genshin
+------------------------------
+亚丝娜,Asuna
+玛奇玛,Makima
+马骑马,Makima
+------------------------------
+灵梦, Reimu
+八云紫,
+------------------------------
+骑马, riding
+游泳, swimming
+唱歌, Singing
+跳舞, Dancing
+------------------------------
+猫,cat
+狗,dog
+羊,sheep
+牛,Cattle
+马,horse
+--------------FGO---------------
+蒙娜丽莎,Mona Lisa
+达芬奇,Da Vinci
+拿破仑,Napoleon
+诸葛,kongming
+孔明,kongming
+诸葛亮,kongming
+诸葛孔明,kongming
+阿尔托莉雅,saber
+远坂凛,Tohsaka Rin
+间桐樱,Matou Sakura
+------------------------------
 1,1girl
 2,2girls
 3,3girls
+------------种族------------------
+天使,Angel
+恶魔,demon
+魔鬼,devil
+美人鱼,Mermaid
+吸血鬼,vampire
+魅魔,Succubus
+------------头发------------------
+学生,student uniform
+黑长直,long black hair
+黑发,black hair
+白发,white hair
+红发,red hair
+长发,long hair
+短发,short hair
+红瞳,red eyes
+红眼,red eyes
+-------------穿着--------------
+泳装,swimwear
+制服,uniform
+赛博,cyber
+--------------场景----------------
+卧室,bedroom
+厨房,kitchen
+室外,outdoor
+星星,starry sky
+星空,starry sky
+海边,seaside
+---------------meme-------------
+24岁,gay
+是学生,student

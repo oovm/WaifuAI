@@ -13,7 +13,7 @@ impl QQSecret {
             .request(method, url)
             .header(USER_AGENT, "BotNodeSDK/v2.9.4")
             .header(AUTHORIZATION, self.bot_token())
-            .header(CONTENT_TYPE, "application/json")
+            // .header(CONTENT_TYPE, "application/json")
             // .bearer_auth(&self.bot_secret)
             .timeout(Duration::from_secs(3))
     }

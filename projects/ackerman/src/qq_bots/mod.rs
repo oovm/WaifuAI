@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::RandomState, BTreeMap},
+    collections::BTreeMap,
     fs,
     fs::read_to_string,
     hash::{BuildHasher, Hash, Hasher},
@@ -10,7 +10,7 @@ use std::{
 use async_trait::async_trait;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use tokio::{fs::File, io::AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio_tungstenite::tungstenite::http::Method;
 
 use qq_bot::{restful::SendMessageRequest, wss::MessageEvent, QQBotProtocol, QQResult, QQSecret, RequestBuilder, Url};
@@ -140,23 +140,17 @@ impl QQBotProtocol for AckermanQQBot {
             s if s.starts_with("waifu") => {
                 let mut tags = self.waifu_image_request(&s["waifu".len()..s.len()])?;
                 if !tags.is_empty() {
-                    let image = tags.nai_request(self).await?;
-                    let mut hasher = RandomState::default().build_hasher();
-                    image.hash(&mut hasher);
-                    let image_name = format!("{}.png", hasher.finish());
-                    let image_path = self.target_dir().join(image_name);
-                    let mut file = File::create(&image_path).await?;
-                    file.write_all(&image).await?;
-
                     match event.attachments.first() {
                         None => {}
                         Some(s) => s.download(&self.target_dir()).await?,
                     }
+                    let image_bytes = tags.nai_request(self).await?;
+                    tags.nai_save(&self.target_dir(), &image_bytes).await?;
+
                     let req = SendMessageRequest {
-                        msg_id: event.id,
+                        msg_id: event.id, //
                         content: "".to_string(),
-                        image_path,
-                        file_image: "waifu".to_string(),
+                        image_bytes,
                         user_id: event.author.id,
                     };
                     req.send(self, event.channel_id).await?;
@@ -173,12 +167,10 @@ impl QQBotProtocol for AckermanQQBot {
                         None => {}
                         Some(s) => s.download(&self.target_dir()).await?,
                     }
-                    let image_path = self.target_dir().join("{8DF6CF1E-304E-B9EA-E9D0-B6CBA8E4EBF6}.jpg");
                     let req = SendMessageRequest {
                         msg_id: event.id,
                         content: "".to_string(),
-                        image_path,
-                        file_image: "furry".to_string(),
+                        image_bytes: vec![],
                         user_id: event.author.id,
                     };
                     req.send(self, event.channel_id).await?;

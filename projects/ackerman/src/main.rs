@@ -1,4 +1,4 @@
-use ackerman::qq_bots::{AckermanConfig, AckermanQQBot};
+use ackerman::qq_bots::AckermanQQBot;
 use qq_bot::{QQBotWebsocket, QQResult};
 
 #[tokio::main]

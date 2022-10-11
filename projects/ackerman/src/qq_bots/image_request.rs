@@ -1,19 +1,17 @@
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use serde_json::to_string;
 use std::{
+    collections::hash_map::RandomState,
     hash::{BuildHasher, Hash, Hasher},
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
     time::Duration,
 };
+use tokio::{fs::File, io::AsyncWriteExt};
+use tokio_tungstenite::tungstenite::http::{header::CONTENT_TYPE, Method};
 
-use serde::{Deserialize, Serialize};
-use serde_json::{to_string, Value};
-use tokio::fs::File;
-use tokio_tungstenite::tungstenite::http::{
-    header::{ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE},
-    Method,
-};
-
-use qq_bot::{Client, QQBotProtocol, QQResult, Url};
+use qq_bot::{Client, QQError, QQResult, Url};
 
 use crate::qq_bots::AckermanQQBot;
 
@@ -51,7 +49,7 @@ impl From<f32> for ImageLayout {
 
 impl Default for NovelAIRequest {
     fn default() -> Self {
-        Self { tags: vec![], layout: ImageLayout::Square, kind: NovelAIKind::Anime }
+        Self { tags: vec![], layout: ImageLayout::Portrait, kind: NovelAIKind::Anime }
     }
 }
 
@@ -78,7 +76,15 @@ impl NovelAIRequest {
         let cost = f32::log2(self.tags.len() as f32) * kind * 1000.0;
         cost.ceil() as i64
     }
-
+    pub async fn nai_save(&self, dir: &PathBuf, bytes: &[u8]) -> QQResult {
+        let mut hasher = RandomState::default().build_hasher();
+        bytes.hash(&mut hasher);
+        let image_name = format!("{:0X}.png", hasher.finish());
+        let image_path = dir.join(image_name);
+        let mut file = File::create(&image_path).await?;
+        file.write_all(&bytes).await?;
+        Ok(())
+    }
     pub async fn nai_request(&self, bot: &AckermanQQBot) -> QQResult<Vec<u8>> {
         let nai_url = Url::from_str("https://api.novelai.net/ai/generate-image")?;
         let nai_request = Client::default()
@@ -93,18 +99,23 @@ impl NovelAIRequest {
         // text/event-stream
         println!("    正在下载图片");
         let stream = nai_request.send().await?.text().await?;
-        println!("    图片下载完成");
-        println!("{}", stream);
-        let image = &stream[27..stream.len()];
-        let bytes = base64::decode(image).unwrap();
-        Ok(bytes)
+        match stream.split_once("data:") {
+            None => {}
+            Some((_, image)) => match base64::decode(image.trim()) {
+                Ok(o) => return Ok(o),
+                Err(_) => {}
+            },
+        }
+
+        Err(QQError::NetError(stream))
     }
     fn qq_content(&self) -> String {
         self.tags.join(",")
     }
 
     fn nai_request_body(&self) -> NaiRequest {
-        let seed = 114514;
+        let mut rng = rand::thread_rng();
+        let seed: u32 = rng.gen();
         let model = match self.kind {
             NovelAIKind::Anime => "nai-diffusion",
             NovelAIKind::Furry => "nai-diffusion-furry",
