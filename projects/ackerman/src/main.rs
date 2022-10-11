@@ -3,9 +3,7 @@ use qq_bot::{QQBotWebsocket, QQResult};
 
 #[tokio::main]
 async fn main() -> QQResult {
-    let key = AckermanConfig::load_toml("key.toml")?;
-    let here = std::env::current_dir()?;
-    let bot = AckermanQQBot::new(here, key)?;
+    let bot = AckermanQQBot::loading()?;
     let mut wss = QQBotWebsocket::link(bot).await?;
     match wss.run().await {
         Ok(_) => {

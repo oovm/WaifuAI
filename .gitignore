@@ -12,4 +12,6 @@ time-travel.*
 # Rust
 target/
 Cargo.lock
-key.toml
+ackerman.toml
+nai.js
+nai.mjs

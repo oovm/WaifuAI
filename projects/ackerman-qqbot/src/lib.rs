@@ -3,7 +3,7 @@ pub use self::{
     errors::{QQError, QQResult},
     wss::QQBotWebsocket,
 };
-pub use reqwest::RequestBuilder;
+pub use reqwest::{Client, Method, RequestBuilder};
 pub use url::Url;
 
 pub mod bots;
