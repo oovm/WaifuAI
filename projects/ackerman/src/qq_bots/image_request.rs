@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{to_string, Value};
 use std::{
     collections::hash_map::RandomState,
-    hash::{BuildHasher, BuildHasherDefault, Hash, Hasher},
+    hash::{BuildHasher, Hash, Hasher},
     str::FromStr,
 };
 use tokio_tungstenite::tungstenite::http::Method;
@@ -78,6 +78,7 @@ impl NovelAIRequest {
             .body(to_string(&self.nai_request_body())?)
             .send()
             .await?;
+        panic!("{:#?}", nai_request.text().await?);
         Ok(nai_request.json().await?)
     }
     fn qq_content(&self) -> String {

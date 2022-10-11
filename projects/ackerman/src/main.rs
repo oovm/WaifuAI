@@ -1,5 +1,5 @@
 use ackerman::qq_bots::{AckermanConfig, AckermanQQBot};
-use qq_bot::{QQBotWebsocket, QQResult, QQSecret};
+use qq_bot::{QQBotWebsocket, QQResult};
 
 #[tokio::main]
 async fn main() -> QQResult {
