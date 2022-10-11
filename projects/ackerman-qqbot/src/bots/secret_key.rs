@@ -10,7 +10,7 @@ impl QQSecret {
     pub fn as_request(&self, method: Method, url: Url) -> RequestBuilder {
         Client::default()
             .request(method, url)
-            .header(USER_AGENT, "BotNodeSDK/v2.9.4")
+            .header(USER_AGENT, "BotRustSDK/v2.9.4")
             .header(AUTHORIZATION, self.bot_token())
             // .header(CONTENT_TYPE, "application/json")
             // .bearer_auth(&self.bot_secret)
