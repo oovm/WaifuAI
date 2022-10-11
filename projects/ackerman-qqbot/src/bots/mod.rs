@@ -9,7 +9,7 @@ use reqwest::{
     header::{AUTHORIZATION, USER_AGENT},
     Client, Method, RequestBuilder,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::{
@@ -19,7 +19,7 @@ use crate::{
 
 mod secret_key;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct QQSecret {
     bot_app_id: u64,
     bot_secret: String,
@@ -28,7 +28,7 @@ pub struct QQSecret {
     deploy: ChannelIds,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct ChannelIds {
     guild_id: u64,
     channel_id: u64,
@@ -71,6 +71,9 @@ pub trait QQBotProtocol: Send {
     async fn on_emoji(&mut self, event: EmojiEvent) -> QQResult {
         println!("[{}] 协议 0", current_time());
         println!("    消息 {} 表情变动", event.target.id);
+        Ok(())
+    }
+    async fn on_save(&mut self) -> QQResult {
         Ok(())
     }
 }

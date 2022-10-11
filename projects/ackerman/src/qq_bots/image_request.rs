@@ -4,11 +4,11 @@ pub struct NovelAIRequest {
     layout: ImageLayout,
     kind: NovelAIKind,
 }
-
+#[derive(Debug)]
 pub enum NovelAIKind {
     Anime = 0,
 }
-
+#[derive(Debug)]
 pub enum ImageLayout {
     Square = 0,
     Portrait = 1,
@@ -55,6 +55,6 @@ impl NovelAIRequest {
             NovelAIKind::Anime => 1.414,
         };
         let cost = f32::log2(self.tags.len() as f32) * kind * 1000.0;
-        cost.ceil().to_i64().unwrap_or(2)
+        cost.ceil() as i64
     }
 }

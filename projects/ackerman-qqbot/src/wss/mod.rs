@@ -141,7 +141,8 @@ where
     }
     pub async fn run(&mut self) -> QQResult {
         self.send_identify().await?;
-        let mut heartbeat = interval(Duration::from_secs_f32(30.0));
+        let mut heartbeat = interval(Duration::from_secs_f32(42.0 * 0.9));
+        let mut saver = interval(Duration::from_secs_f32(30.0));
         loop {
             select! {
                 listen = self.next() => {
@@ -161,6 +162,9 @@ where
                      else {
                         self.send_heartbeat().await?;
                     }
+                },
+                                _ = saver.tick() => {
+                     self.bot.on_save().await?;
                 },
             }
         }

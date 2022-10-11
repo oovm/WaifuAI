@@ -1,37 +1,54 @@
-use std::{collections::BTreeMap, fs, path::PathBuf};
+use std::{collections::BTreeMap, fs, io::Write, path::PathBuf};
 
 use async_trait::async_trait;
+use dashmap::DashMap;
 use qq_bot::{restful::SendMessageRequest, wss::MessageEvent, QQBotProtocol, QQResult, QQSecret, RequestBuilder, Url};
 use tokio_tungstenite::tungstenite::http::Method;
 
 pub use self::image_request::NovelAIRequest;
-
+use serde::{Deserialize, Serialize};
 mod image_request;
 
+#[derive(Serialize, Deserialize)]
 pub struct AckermanQQBot {
+    #[serde(default)]
     pub secret: QQSecret,
+    #[serde(default)]
     pub here: PathBuf,
+    #[serde(default)]
     pub cn_tags: BTreeMap<String, String>,
+    #[serde(default)]
     pub users: DashMap<String, i64>,
 }
 
 impl AckermanQQBot {
     pub fn new(work_dir: PathBuf, secret: QQSecret) -> QQResult<Self> {
         let mut out = Self { secret, here: work_dir, cn_tags: BTreeMap::default(), users: Default::default() };
-        out.ensure_path()?;
-        for line in include_str!("dict.txt").lines() {
-            if let Some((cn, en)) = line.split_once(",") {
-                out.cn_tags.insert(cn.trim().to_string(), en.trim().to_string());
-            }
+        if out.database_path().exists() {
+            let db = fs::read_to_string(out.database_path())?;
+            out = serde_json::from_str(&db)?
         }
+        else {
+            out.ensure_path()?;
+        }
+        out.load_dict();
         Ok(out)
     }
-
+    pub fn load_dict(&mut self) {
+        for line in include_str!("dict.txt").lines() {
+            if let Some((cn, en)) = line.split_once(",") {
+                self.cn_tags.insert(cn.trim().to_string(), en.trim().to_string());
+            }
+        }
+    }
     pub fn ensure_path(&self) -> QQResult {
         if !self.target_dir().exists() {
             fs::create_dir(self.target_dir())?
         }
         Ok(())
+    }
+    pub fn database_path(&self) -> PathBuf {
+        self.here.join("users.db")
     }
     pub fn target_dir(&self) -> PathBuf {
         self.here.join("target/ackerman/")
@@ -134,5 +151,11 @@ impl QQBotProtocol for AckermanQQBot {
             s if s.starts_with("<@!") => Ok(()),
             _ => self.on_normal_message(event).await,
         }
+    }
+    async fn on_save(&mut self) -> QQResult {
+        let s = serde_json::to_string_pretty(self)?;
+        let mut save = fs::File::create(self.database_path())?;
+        save.write_all(s.as_bytes())?;
+        Ok(())
     }
 }
