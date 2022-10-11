@@ -1,0 +1,29 @@
+[package]
+name = "novel-ai"
+version = "0.0.0"
+authors = ["Aster <192607617@qq.com>"]
+description = "..."
+repository = "https://github.com/oovm/Ackerman"
+documentation = "https://docs.rs/novel-ai"
+readme = "Readme.md"
+license = "MPL-2.0"
+edition = "2021"
+
+
+[dependencies]
+qq-bot = {version = "0.0.0", path = "../ackerman-qqbot"}
+futures-util = "0.3.24"
+tokio = {version = "1.21.2", features = ["full"]}
+tokio-tungstenite = {version = "0.17.2", features = ["native-tls"]}
+async-trait = "0.1.57"
+serde = "1.0.145"
+serde_json = "1.0.86"
+dashmap = {version = "5.4.0", features = ["serde"]}
+toml = "0.5.9"
+base64 = "0.13.0"
+rand = "0.8.5"
+
+[dev-dependencies]
+
+[features]
+default = []
