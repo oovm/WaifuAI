@@ -104,8 +104,11 @@ impl QQBotProtocol for AckermanQQBot {
     async fn on_message(&mut self, event: MessageEvent) -> QQResult {
         match event.content.as_str() {
             s if s.starts_with("waifu") => {
-                let tags = self.waifu_image_request(&s["waifu".len()..s.len()])?;
+                let mut tags = self.waifu_image_request(&s["waifu".len()..s.len()])?;
                 if !tags.is_empty() {
+                    let content = tags;
+                    tags.add_tag("best quality");
+                    tags.add_tag("masterpiece");
                     match event.attachments.first() {
                         None => {}
                         Some(s) => s.download(&self.target_dir()).await?,
@@ -153,6 +156,7 @@ impl QQBotProtocol for AckermanQQBot {
         }
     }
     async fn on_save(&mut self) -> QQResult {
+        println!("    存档中");
         let s = serde_json::to_string_pretty(self)?;
         let mut save = fs::File::create(self.database_path())?;
         save.write_all(s.as_bytes())?;
