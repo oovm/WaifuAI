@@ -1,19 +1,14 @@
-use crate::QQBotProtocol;
-use async_trait::async_trait;
-use chrono::Utc;
-use futures_util::{
-    stream::{SplitSink, SplitStream},
-    SinkExt, StreamExt,
-};
-use reqwest::{Method, RequestBuilder};
-use serde::{Deserialize, Serialize};
-use serde_json::{from_str, to_string, Value};
 use std::{
     fmt::{Debug, Formatter},
-    net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
     time::Duration,
 };
+
+use chrono::Utc;
+use futures_util::{SinkExt, StreamExt};
+use reqwest::Method;
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, to_string, Value};
 use tokio::{net::TcpStream, select, time::interval};
 use tokio_tungstenite::{
     connect_async,
@@ -22,7 +17,7 @@ use tokio_tungstenite::{
 };
 use url::Url;
 
-use crate::{QQResult, QQSecret};
+use crate::{QQBotProtocol, QQResult};
 
 pub use self::{
     connect_event::ConnectEvent,
@@ -133,9 +128,9 @@ where
     pub async fn relink(&mut self) -> QQResult {
         let url = Url::from_str("https://sandbox.api.sgroup.qq.com/gateway/bot")?;
         let request = self.bot.build_request(Method::GET, url);
-        let connected: QQBotConnected = request.send().await?.json().await?;
-        let (wss, _) = connect_async(&connected.url).await?;
-        self.wss = wss;
+        let _: QQBotConnected = request.send().await?.json().await?;
+        // let (wss, _) = connect_async(&connected.url).await?;
+        // self.wss = wss;
         self.closed = false;
         Ok(())
     }

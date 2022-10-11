@@ -52,6 +52,9 @@ pub struct MessageAttachment {
 }
 
 impl MessageAttachment {
+    pub fn aspect_ratio(&self) -> f32 {
+        self.width as f32 / self.height as f32
+    }
     pub async fn download(&self, dir: &PathBuf) -> QQResult<Vec<u8>> {
         let url = Url::from_str(&format!("https://{}", self.url))?;
         let request = Client::default()
@@ -59,11 +62,9 @@ impl MessageAttachment {
             .header(USER_AGENT, "BotNodeSDK/v2.9.4")
             .timeout(Duration::from_secs(30));
         let bytes = request.send().await?.bytes().await?;
-        println!("    下载图片 {}", self.filename);
         let path = dir.join(&self.filename);
         let mut file = File::create(path).await?;
         file.write_all(&bytes).await?;
-        println!("    下载完成");
         Ok(bytes.to_vec())
     }
 }
