@@ -1,19 +1,6 @@
-use std::error::Error;
-use std::fmt::{Display, Formatter};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
-pub enum NaiError {
-    IOError(std::io::Error)
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct NaiSecret {
+    bearer: String,
 }
-
-impl Display for NaiError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
-
-impl Error for NaiError {
-
-}
-
-pub type NaiResult<T=()> = Result<T, NaiError>;

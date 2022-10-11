@@ -1,3 +1,8 @@
+use base64::decode;
+use reqwest::header::CONTENT_TYPE;
+use reqwest::{Client, Method};
+use url::Url;
+use crate::{NaiError, NaiResult};
 use super::*;
 
 #[derive(Serialize, Deserialize)]
@@ -68,7 +73,7 @@ impl ImageRequest {
         let cost = f32::log2(self.tags.len() as f32) * kind * 1000.0;
         cost.ceil() as i64
     }
-    pub async fn nai_save(&self, dir: &PathBuf, bytes: &[u8]) -> QQResult {
+    pub async fn nai_save(&self, dir: &PathBuf, bytes: &[u8]) -> NaiResult {
         let mut hasher = RandomState::default().build_hasher();
         bytes.hash(&mut hasher);
         let image_name = format!("{:0X}.png", hasher.finish());
@@ -77,7 +82,7 @@ impl ImageRequest {
         file.write_all(&bytes).await?;
         Ok(())
     }
-    pub async fn nai_request(&self, bot: &AckermanQQBot) -> QQResult<Vec<u8>> {
+    pub async fn nai_request(&self, bearer: &str) -> NaiResult<Vec<u8>> {
         let nai_url = Url::from_str("https://api.novelai.net/ai/generate-image")?;
         let nai_request = Client::default()
             .request(Method::POST, nai_url)
@@ -85,20 +90,19 @@ impl ImageRequest {
             // .header(USER_AGENT, "BotNodeSDK/v2.9.4")
             // .header("origin", "https://novelai.net")
             // .header("referer", "https://novelai.net/")
-            .bearer_auth(&bot.config.nai.bearer)
+            .bearer_auth(bearer)
             .body(to_string(&self.nai_request_body())?)
             .timeout(Duration::from_secs(10));
         // text/event-stream
-        println!("    正在下载图片");
         let stream = nai_request.send().await?.text().await?;
         match stream.split_once("data:") {
             None => {}
-            Some((_, image)) => match base64::decode(image.trim()) {
+            Some((_, image)) => match decode(image.trim()) {
                 Ok(o) => return Ok(o),
                 Err(_) => {}
             },
         }
-        Err(QQError::NetError(stream))
+        Err(NaiError::NetError(stream))
     }
     fn qq_content(&self) -> String {
         self.tags.join(",")
