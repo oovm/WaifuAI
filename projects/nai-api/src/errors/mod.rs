@@ -18,7 +18,11 @@ impl Error for NaiError {
 
 impl Display for NaiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        match self {
+            NaiError::IOError(e) => write!(f, "{}", e),
+            NaiError::ParseError(e) => write!(f, "{}", e),
+            NaiError::NetError(e) => write!(f, "{}", e)
+        }
     }
 }
 
