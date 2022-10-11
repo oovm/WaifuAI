@@ -16,12 +16,13 @@ use qq_bot::{Client, QQError, QQResult, Url};
 use crate::qq_bots::AckermanQQBot;
 
 #[derive(Debug, Hash)]
-pub struct NovelAIRequest {
+pub struct ImageRequest {
     tags: Vec<String>,
     layout: ImageLayout,
     kind: NovelAIKind,
     image: Vec<u8>,
 }
+
 #[derive(Debug, Hash)]
 pub enum NovelAIKind {
     Anime = 0,
@@ -48,13 +49,13 @@ impl From<f32> for ImageLayout {
     }
 }
 
-impl Default for NovelAIRequest {
+impl Default for ImageRequest {
     fn default() -> Self {
         Self { tags: vec![], layout: ImageLayout::Portrait, kind: NovelAIKind::Anime, image: vec![] }
     }
 }
 
-impl NovelAIRequest {
+impl ImageRequest {
     pub fn add_tag(&mut self, tag: &str) {
         if !tag.is_empty() {
             self.tags.push(tag.to_string())
@@ -164,7 +165,7 @@ impl NovelAIRequest {
                 seed,
                 uc: "nsfw, bad anatomy".to_string(),
                 uc_preset: 0,
-                noise: 0.10,
+                noise: 0.00,
             },
         }
     }
