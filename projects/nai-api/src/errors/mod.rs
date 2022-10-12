@@ -1,6 +1,7 @@
 use std::{
     error::Error,
     fmt::{Display, Formatter},
+    num::{ParseFloatError, ParseIntError},
 };
 
 pub type NaiResult<T = ()> = Result<T, NaiError>;
@@ -34,8 +35,19 @@ impl From<url::ParseError> for NaiError {
         Self::ParseError(e.to_string())
     }
 }
+
 impl From<serde_json::Error> for NaiError {
     fn from(e: serde_json::Error) -> Self {
+        Self::ParseError(e.to_string())
+    }
+}
+impl From<ParseIntError> for NaiError {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseError(e.to_string())
+    }
+}
+impl From<ParseFloatError> for NaiError {
+    fn from(e: ParseFloatError) -> Self {
         Self::ParseError(e.to_string())
     }
 }

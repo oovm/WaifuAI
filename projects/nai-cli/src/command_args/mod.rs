@@ -1,9 +1,12 @@
-use std::future::Future;
+use std::{env::current_exe, fs::read_to_string, future::Future, str::FromStr};
 
 use futures_util::StreamExt;
 use rand::{thread_rng, Rng};
+use reqwest::{Client, Method};
+use serde::{Deserialize, Serialize};
+use toml::from_str;
 
-use novel_ai::{NaiResult, NaiSecret};
+use novel_ai::{NaiError, NaiResult, NaiSecret};
 
 use crate::{builtin::BUILTIN_PROMPTS, task_builder::TaskBuilder, CommandArgs, Commands, NaiConfig};
 
@@ -76,4 +79,45 @@ impl Commands {
         }
         Ok(())
     }
+}
+
+impl NaiConfig {
+    pub fn load() -> NaiResult<Self> {
+        let config_path = current_exe()?.with_file_name("nai.toml");
+        let toml = match read_to_string(config_path) {
+            Ok(o) => o,
+            Err(_) => {
+                return Err(NaiError::ParseError("配置文件 nai.toml 读取失败".to_string()));
+            }
+        };
+        match from_str(&toml) {
+            Ok(o) => Ok(o),
+            Err(e) => return Err(NaiError::ParseError(e.to_string())),
+        }
+    }
+}
+
+impl NaiConfig {
+    pub async fn get_time() -> NaiResult<u64> {
+        let tao_bao: TaoBao = Client::default()
+            .request(Method::GET, "https://api.m.taobao.com/rest/api3.do?api=mtop.common.getTimestamp")
+            .send()
+            .await?
+            .json()
+            .await?;
+        Ok(u64::from_str(&tao_bao.data.t)?)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct TaoBaoTime {
+    pub t: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TaoBao {
+    pub api: String,
+    pub v: String,
+    pub ret: Vec<String>,
+    pub data: TaoBaoTime,
 }

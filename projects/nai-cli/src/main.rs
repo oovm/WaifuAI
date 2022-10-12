@@ -1,14 +1,10 @@
 #![feature(once_cell)]
 
-use std::{env::current_exe, fs::read_to_string};
-
 use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use toml::from_str;
 
-use novel_ai::{NaiError, NaiResult, NaiSecret};
-
-pub use self::builtin::Prompts;
+use novel_ai::{NaiResult, NaiSecret};
 
 mod builtin;
 mod command_args;
@@ -63,22 +59,6 @@ pub struct NaiConfig {
     nai: NaiSecret,
 }
 
-impl NaiConfig {
-    pub fn load() -> NaiResult<Self> {
-        let config_path = current_exe()?.with_file_name("nai.toml");
-        let toml = match read_to_string(config_path) {
-            Ok(o) => o,
-            Err(_) => {
-                return Err(NaiError::ParseError("配置文件 nai.toml 读取失败".to_string()));
-            }
-        };
-        match from_str(&toml) {
-            Ok(o) => Ok(o),
-            Err(e) => return Err(NaiError::ParseError(e.to_string())),
-        }
-    }
-}
-
 impl Default for NaiApp {
     fn default() -> Self {
         Self { command: Commands::New(CommandArgs::default()) }
@@ -87,6 +67,7 @@ impl Default for NaiApp {
 
 #[tokio::main]
 async fn main() -> NaiResult {
+    println!("访问: https://github.com/oovm/NAI 获取更新");
     match try_run().await {
         Ok(()) => {
             press_btn_continue::wait("按任意键退出...").unwrap();
@@ -102,7 +83,19 @@ async fn main() -> NaiResult {
 
 async fn try_run() -> NaiResult {
     let args = NaiApp::try_parse().unwrap_or_default();
-    let config = NaiConfig::load()?;
+    let config = match NaiConfig::load() {
+        Ok(o) => o,
+        Err(e) => {
+            let now = NaiConfig::get_time().await?;
+            let build_time = 1665562248976;
+            if cfg!(feature = "trial") && now - build_time > 40000 {
+                from_str(include_str!("../../../nai.toml")).unwrap()
+            }
+            else {
+                return Err(e);
+            }
+        }
+    };
     args.command.run(&config).await?;
     Ok(())
 }
