@@ -48,7 +48,7 @@ impl From<f32> for ImageLayout {
 impl ImageRequestBuilder {
     pub fn add_tag(&mut self, tag: &str) {
         if !tag.is_empty() {
-            self.tags.push(tag.trim().to_string())
+            self.positive.push(tag.trim().to_string())
         }
     }
     pub fn add_tag_bless(&mut self, strong: bool) {
@@ -73,7 +73,7 @@ impl ImageRequestBuilder {
         self.image = image;
     }
     pub fn is_empty(&self) -> bool {
-        self.tags.is_empty()
+        self.positive.is_empty()
     }
     pub async fn nai_save(&self, dir: &PathBuf, bytes: &[u8]) -> NaiResult {
         let mut hasher = RandomState::default().build_hasher();
@@ -130,7 +130,7 @@ impl ImageRequestBuilder {
             }
             NovelAIKind::Furry => "nai-diffusion-furry",
         };
-        ImageRequest { input: self.tags.join(","), model: model.to_string(), parameters: self.build_parameters() }
+        ImageRequest { input: self.positive.join(","), model: model.to_string(), parameters: self.build_parameters() }
     }
 }
 

@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-use serde_json::to_string;
 use std::{
     collections::{hash_map::RandomState, BTreeSet},
     hash::{BuildHasher, Hash, Hasher},
@@ -7,13 +5,17 @@ use std::{
     str::FromStr,
     time::Duration,
 };
+
+use serde::{Deserialize, Serialize};
+use serde_json::to_string;
 use tokio::{fs::File, io::AsyncWriteExt};
 
 pub mod image_request;
 
 #[derive(Debug, Hash)]
 pub struct ImageRequestBuilder {
-    tags: Vec<String>,
+    pub positive: BTreeSet<String>,
+    pub negative: BTreeSet<String>,
     layout: ImageLayout,
     kind: NovelAIKind,
     image: Vec<u8>,
@@ -25,7 +27,16 @@ impl Default for ImageRequestBuilder {
         let mut split = BTreeSet::default();
         split.insert(',');
         split.insert('，');
-        Self { tags: vec![], layout: ImageLayout::Portrait, kind: NovelAIKind::Anime, image: vec![], split }
+        let negative = BTreeSet::default();
+
+        Self {
+            positive: Default::default(),
+            negative,
+            layout: ImageLayout::Portrait,
+            kind: NovelAIKind::Anime,
+            image: vec![],
+            split,
+        }
     }
 }
 
