@@ -10,8 +10,8 @@ use std::{
 use tokio::{fs::File, io::AsyncWriteExt};
 use toml::from_str;
 
+pub mod builtin;
 pub mod with_tags;
-
 use rand::Rng;
 
 #[tokio::main]
@@ -22,8 +22,8 @@ async fn main() -> NaiResult {
     };
     // nai miko -f 5
     let concurrency = 3;
-    let seeds = 5;
-    let frame = 7;
+    let seeds = 99999;
+    let frame = 1;
     let step = 13;
     let mut tasks = VecDeque::new();
 
@@ -31,9 +31,9 @@ async fn main() -> NaiResult {
         let mut rng = thread_rng();
         let seed = rng.gen();
         let builder = TaskBuilder {
-            tags: "best quality, masterpiece, detailed, 2girls, kiss".to_string(),
+            tags: "best quality, masterpiece, highres, school uniform, devil, black hair, off_shoulder, {solo}".to_string(),
             seed,
-            dir: PathBuf::from("target/nai/black red/"),
+            dir: PathBuf::from("target/nai/school uniform/"),
         };
         builder.ensure_path()?;
         for i in 0..=(frame - 1) {
@@ -88,10 +88,10 @@ impl TaskBuilder {
         let idx = 100 + i;
         request.parameters.noise = 0.2;
         request.parameters.seed = self.seed;
-        request.parameters.scale = (idx as f32 / 10.0) - 0.3;
+        request.parameters.scale = (idx as f32 / 10.0) - 0.0;
         // request.model = "safe-diffusion".to_string();
         let file_name = format!("{}-{}.png", request.parameters.seed, idx);
-        println!("Drawing {}", file_name);
+        println!("Draw:   {}", file_name);
         let file_path = self.dir.join(&file_name);
         if file_path.exists() {
             return Ok(());
@@ -99,7 +99,7 @@ impl TaskBuilder {
         let mut file = File::create(file_path).await?;
         let image = request.request_image(nai).await?;
         file.write_all(&image).await?;
-        println!("Finish {}", file_name);
+        println!("Finish: {}", file_name);
         Ok(())
     }
 }
