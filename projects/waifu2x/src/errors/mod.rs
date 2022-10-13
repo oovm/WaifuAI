@@ -1,48 +1,46 @@
-use std::error::Error;
-use std::fmt::{Display, Formatter};
+use std::{
+    error::Error,
+    fmt::{Display, Formatter},
+};
 
-
-
-pub type NaiResult<T=()> = Result<T, NaiError>;
+pub type Waifu2xResult<T = ()> = Result<T, Waifu2xError>;
 
 #[derive(Debug)]
-pub enum NaiError {
+pub enum Waifu2xError {
     IOError(std::io::Error),
     ParseError(String),
-    NetError(String)
+    NetError(String),
 }
 
-impl Error for NaiError {
+impl Error for Waifu2xError {}
 
-}
-
-impl Display for NaiError {
+impl Display for Waifu2xError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            NaiError::IOError(e) => write!(f, "{}", e),
-            NaiError::ParseError(e) => write!(f, "{}", e),
-            NaiError::NetError(e) => write!(f, "{}", e)
+            Waifu2xError::IOError(e) => write!(f, "{}", e),
+            Waifu2xError::ParseError(e) => write!(f, "{}", e),
+            Waifu2xError::NetError(e) => write!(f, "{}", e),
         }
     }
 }
 
-impl From<std::io::Error> for NaiError {
+impl From<std::io::Error> for Waifu2xError {
     fn from(e: std::io::Error) -> Self {
         Self::IOError(e)
     }
 }
-impl From<url::ParseError> for NaiError {
+impl From<url::ParseError> for Waifu2xError {
     fn from(e: url::ParseError) -> Self {
-       Self::ParseError(e.to_string())
+        Self::ParseError(e.to_string())
     }
 }
-impl From<serde_json::Error> for NaiError {
+impl From<serde_json::Error> for Waifu2xError {
     fn from(e: serde_json::Error) -> Self {
         Self::ParseError(e.to_string())
     }
 }
 
-impl From<reqwest::Error> for NaiError {
+impl From<reqwest::Error> for Waifu2xError {
     fn from(e: reqwest::Error) -> Self {
         Self::NetError(e.to_string())
     }

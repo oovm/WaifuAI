@@ -1,5 +1,5 @@
 use super::*;
-use crate::{NaiError, NaiResult, NaiSecret};
+use crate::{NaiSecret, Waifu2xError, Waifu2xResult};
 use base64::{decode, encode};
 use reqwest::{header::CONTENT_TYPE, Client, Method};
 use url::Url;
@@ -75,7 +75,7 @@ impl ImageRequestBuilder {
     pub fn is_empty(&self) -> bool {
         self.tags.is_empty()
     }
-    pub async fn nai_save(&self, dir: &PathBuf, bytes: &[u8]) -> NaiResult {
+    pub async fn nai_save(&self, dir: &PathBuf, bytes: &[u8]) -> Waifu2xResult {
         let mut hasher = RandomState::default().build_hasher();
         bytes.hash(&mut hasher);
         let image_name = format!("{:0X}.png", hasher.finish());
@@ -135,7 +135,7 @@ impl ImageRequestBuilder {
 }
 
 impl ImageRequest {
-    pub async fn request_image(&self, secret: &NaiSecret) -> NaiResult<Vec<u8>> {
+    pub async fn request_image(&self, secret: &NaiSecret) -> Waifu2xResult<Vec<u8>> {
         let nai_url = Url::from_str("https://api.novelai.net/ai/generate-image")?;
         let nai_request = Client::default()
             .request(Method::POST, nai_url)
@@ -155,6 +155,6 @@ impl ImageRequest {
                 Err(_) => {}
             },
         }
-        Err(NaiError::NetError(stream))
+        Err(Waifu2xError::NetError(stream))
     }
 }

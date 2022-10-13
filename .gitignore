@@ -14,7 +14,8 @@ target/
 Cargo.lock
 
 nai.toml
-
 nai.js
 nai.mjs
+
+senjougahara.png
 *.onnx
