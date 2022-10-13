@@ -1,8 +1,8 @@
 use crate::Waifu2xResult;
-use std::env::current_exe;
+use std::env::{current_dir, current_exe};
 use tract_onnx::{
     onnx,
-    prelude::{Framework, Graph, InferenceModelExt, RunnableModel, TypedFact, TypedOp},
+    prelude::{Framework, Graph, InferenceModel, InferenceModelExt, RunnableModel, TypedFact, TypedOp},
 };
 
 pub type ModelType = RunnableModel<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>;
@@ -19,8 +19,12 @@ impl Waifu2x {
     pub fn render(&self) {}
 }
 
-pub fn find_model(name: &str) -> Waifu2xResult<ModelType> {
-    let path = current_exe()?.with_file_name(name);
-    let model = onnx().model_for_path(path)?.into_optimized()?.into_runnable()?;
+pub fn find_model(name: &str) -> Waifu2xResult<InferenceModel> {
+    let mut model_dir = current_exe()?;
+    model_dir.pop();
+    model_dir.push("models");
+    model_dir.push(name);
+    println!("Loading model from {:?}", model_dir);
+    let model = onnx().model_for_path(model_dir)?;
     return Ok(model);
 }

@@ -12,7 +12,7 @@ pub enum Waifu2xError {
     ParseError(String),
     NetError(String),
     ImageError(ImageError),
-    UnknownError,
+    UnknownError(tract_onnx::tract_core::anyhow::Error),
 }
 
 impl Error for Waifu2xError {}
@@ -24,7 +24,7 @@ impl Display for Waifu2xError {
             Waifu2xError::ParseError(e) => write!(f, "{}", e),
             Waifu2xError::NetError(e) => write!(f, "{}", e),
             Waifu2xError::ImageError(e) => write!(f, "{}", e),
-            Waifu2xError::UnknownError => Ok(()),
+            Waifu2xError::UnknownError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -57,7 +57,7 @@ impl From<ImageError> for Waifu2xError {
 }
 
 impl From<tract_onnx::tract_core::anyhow::Error> for Waifu2xError {
-    fn from(_: tract_onnx::tract_core::anyhow::Error) -> Self {
-        Self::UnknownError
+    fn from(e: tract_onnx::tract_core::anyhow::Error) -> Self {
+        Self::UnknownError(e)
     }
 }

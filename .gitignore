@@ -17,5 +17,6 @@ nai.toml
 nai.js
 nai.mjs
 
-senjougahara.png
+projects/waifu2x/senjougahara.png
+models/
 *.onnx

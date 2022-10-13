@@ -2,6 +2,7 @@
 members = ["projects/*"]
 default-members = [
     "projects/nai-api",
+    "projects/waifu2x",
     "projects/waifu2x-api",
 ]
 exclude = [
