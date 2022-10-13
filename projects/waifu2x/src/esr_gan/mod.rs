@@ -1,39 +1,27 @@
+use crate::{
+    utils::{find_model, ModelType},
+    Waifu2xResult,
+};
 use image::RgbImage;
 use std::{
     env::{current_dir, current_exe},
+    path::PathBuf,
     sync::LazyLock,
 };
 use tract_onnx::prelude::*;
 
 #[test]
-fn test() {
-    let image = image::open("senjougahara.png").unwrap().to_rgb8();
-    main(image).unwrap()
+fn test() -> Waifu2xResult {
+    let image = image::open("senjougahara.png")?.to_rgb8();
+    main(image)?;
+    Ok(())
 }
 
-pub struct Waifu2x {
-    model: Waifu2xModel,
-}
-
-pub enum Waifu2xModel {
-    ESRGAN,
-}
-
-impl Waifu2x {
-    pub fn render(&self) {}
-}
-
-pub static WAIFU_ESRGAN: LazyLock<RunnableModel<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>> =
-    LazyLock::new(|| onnx().model_for_path("waifu-esrgan.onnx")?.into_optimized()?.into_runnable()?);
-
-fn find_file(name: &str) {
-    current_exe().unwrap().with_file_name("waifu-esrgan.onnx")
-}
+/// <https://github.com/TheFutureGadgetsLab/WaifuXL>
+pub static WAIFU_ESRGAN: LazyLock<ModelType> = LazyLock::new(|| find_model("waifu-esrgan.onnx").unwrap());
 
 fn main(image: RgbImage) -> TractResult<()> {
     // https://github.com/TheFutureGadgetsLab/WaifuXL
-    let model: RunnableModel<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>> =
-        onnx().model_for_path("waifu-esrgan.onnx")?.into_optimized()?.into_runnable()?;
 
     let resized = image::imageops::resize(&image, 224, 224, ::image::imageops::FilterType::Triangle);
     let image: Tensor = tract_ndarray::Array4::from_shape_fn((1, 3, 224, 224), |(_, c, y, x)| {
@@ -42,7 +30,7 @@ fn main(image: RgbImage) -> TractResult<()> {
         (resized[(x as _, y as _)][c] as f32 / 255.0 - mean) / std
     })
     .into();
-    let result = model.run(tvec!(image))?;
+    let result = WAIFU_ESRGAN.run(tvec!(image))?;
     let best = result[0].to_array_view::<f32>()?.iter().cloned().zip(2..).max_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     println!("result: {:?}", best);
     Ok(())

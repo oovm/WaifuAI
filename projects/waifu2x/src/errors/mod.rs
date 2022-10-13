@@ -1,3 +1,4 @@
+use image::ImageError;
 use std::{
     error::Error,
     fmt::{Display, Formatter},
@@ -10,6 +11,8 @@ pub enum Waifu2xError {
     IOError(std::io::Error),
     ParseError(String),
     NetError(String),
+    ImageError(ImageError),
+    UnknownError,
 }
 
 impl Error for Waifu2xError {}
@@ -20,6 +23,8 @@ impl Display for Waifu2xError {
             Waifu2xError::IOError(e) => write!(f, "{}", e),
             Waifu2xError::ParseError(e) => write!(f, "{}", e),
             Waifu2xError::NetError(e) => write!(f, "{}", e),
+            Waifu2xError::ImageError(e) => write!(f, "{}", e),
+            Waifu2xError::UnknownError => Ok(()),
         }
     }
 }
@@ -43,5 +48,16 @@ impl From<serde_json::Error> for Waifu2xError {
 impl From<reqwest::Error> for Waifu2xError {
     fn from(e: reqwest::Error) -> Self {
         Self::NetError(e.to_string())
+    }
+}
+impl From<ImageError> for Waifu2xError {
+    fn from(e: ImageError) -> Self {
+        Self::ImageError(e)
+    }
+}
+
+impl From<tract_onnx::tract_core::anyhow::Error> for Waifu2xError {
+    fn from(_: tract_onnx::tract_core::anyhow::Error) -> Self {
+        Self::UnknownError
     }
 }
