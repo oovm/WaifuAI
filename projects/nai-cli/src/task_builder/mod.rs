@@ -21,7 +21,7 @@ impl TaskBuilder {
     }
     fn request(&self) -> ImageRequest {
         let mut builder = ImageRequestBuilder::default();
-        builder.add_tag_split(&self.tags);
+        builder += &self.tags;
         builder.build()
     }
     pub fn ensure_path(&self) -> NaiResult {

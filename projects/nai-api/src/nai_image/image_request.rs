@@ -1,8 +1,15 @@
-use super::*;
 use crate::{NaiError, NaiResult, NaiSecret};
 use base64::{decode, encode};
+use itertools::Itertools;
 use reqwest::{header::CONTENT_TYPE, Client, Method};
+use std::{
+    fs::File,
+    io::Write,
+    ops::{AddAssign, SubAssign},
+};
 use url::Url;
+
+use super::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ImageRequest {
@@ -45,24 +52,29 @@ impl From<f32> for ImageLayout {
     }
 }
 
+impl<T> AddAssign<T> for ImageRequestBuilder
+where
+    T: AsRef<str>,
+{
+    fn add_assign(&mut self, rhs: T) {
+        for tag in rhs.as_ref().split(|f: char| [',', '，'].contains(&f)) {
+            self.positive.insert(tag.trim().to_lowercase());
+        }
+    }
+}
+
+impl<T> SubAssign<T> for ImageRequestBuilder
+where
+    T: AsRef<str>,
+{
+    fn sub_assign(&mut self, rhs: T) {
+        for tag in rhs.as_ref().split(|f: char| [',', '，'].contains(&f)) {
+            self.negative.insert(tag.trim().to_lowercase());
+        }
+    }
+}
+
 impl ImageRequestBuilder {
-    pub fn add_tag(&mut self, tag: &str) {
-        if !tag.is_empty() {
-            self.positive.push(tag.trim().to_string())
-        }
-    }
-    pub fn add_tag_bless(&mut self, strong: bool) {
-        match strong {
-            true => self.add_tag_split("{best quality}, {masterpiece}, highres, original, extremely detailed wallpaper"),
-            false => self.add_tag_split("best quality, masterpiece, highres, original, extremely detailed wallpaper"),
-        }
-    }
-    pub fn add_tag_split(&mut self, tags: &str) {
-        let tags: Vec<_> = tags.split(|f: char| self.split.contains(&f)).collect();
-        for tag in tags {
-            self.add_tag(tag)
-        }
-    }
     pub fn set_layout(&mut self, layout: impl Into<ImageLayout>) {
         self.layout = layout.into()
     }
@@ -75,13 +87,13 @@ impl ImageRequestBuilder {
     pub fn is_empty(&self) -> bool {
         self.positive.is_empty()
     }
-    pub async fn nai_save(&self, dir: &PathBuf, bytes: &[u8]) -> NaiResult {
+    pub fn nai_save(&self, dir: &PathBuf, bytes: &[u8]) -> NaiResult {
         let mut hasher = RandomState::default().build_hasher();
         bytes.hash(&mut hasher);
         let image_name = format!("{:0X}.png", hasher.finish());
         let image_path = dir.join(image_name);
-        let mut file = File::create(&image_path).await?;
-        file.write_all(&bytes).await?;
+        let mut file = File::create(&image_path)?;
+        file.write_all(&bytes)?;
         Ok(())
     }
     fn build_parameters(&self) -> ImageParameters {
@@ -113,7 +125,7 @@ impl ImageRequestBuilder {
             strength,
             sampler: "k_euler_ancestral".to_string(),
             seed: 42,
-            uc: "nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry".to_string(),
+            uc: self.negative.iter().join(","),
             uc_preset: 0,
             noise: 0.10,
         }
@@ -130,7 +142,7 @@ impl ImageRequestBuilder {
             }
             NovelAIKind::Furry => "nai-diffusion-furry",
         };
-        ImageRequest { input: self.positive.join(","), model: model.to_string(), parameters: self.build_parameters() }
+        ImageRequest { input: self.positive.iter().join(","), model: model.to_string(), parameters: self.build_parameters() }
     }
 }
 

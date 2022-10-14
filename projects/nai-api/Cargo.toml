@@ -1,8 +1,8 @@
 [package]
 name = "novel-ai"
-version = "0.0.0"
+version = "0.2.0"
 authors = ["Aster <192607617@qq.com>"]
-description = "..."
+description = "Noval-AI API Request"
 repository = "https://github.com/oovm/Ackerman"
 documentation = "https://docs.rs/novel-ai"
 readme = "Readme.md"
@@ -11,8 +11,9 @@ edition = "2021"
 
 [dependencies]
 url = "2.3.1"
+indexmap = "1.9.1"
+itertools = "0.10.5"
 futures-util = "0.3.24"
-tokio = {version = "1.21.2", features = ["full"]}
 serde = {version = "1.0.145", features = ["derive"]}
 serde_json = "1.0.86"
 base64 = "0.13.0"

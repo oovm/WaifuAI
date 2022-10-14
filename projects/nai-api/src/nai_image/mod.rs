@@ -1,5 +1,6 @@
+use indexmap::IndexSet;
 use std::{
-    collections::{hash_map::RandomState, BTreeSet},
+    collections::hash_map::RandomState,
     hash::{BuildHasher, Hash, Hasher},
     path::PathBuf,
     str::FromStr,
@@ -8,35 +9,29 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use serde_json::to_string;
-use tokio::{fs::File, io::AsyncWriteExt};
 
 pub mod image_request;
 
-#[derive(Debug, Hash)]
+#[derive(Debug)]
 pub struct ImageRequestBuilder {
-    pub positive: BTreeSet<String>,
-    pub negative: BTreeSet<String>,
-    layout: ImageLayout,
-    kind: NovelAIKind,
-    image: Vec<u8>,
-    split: BTreeSet<char>,
+    pub positive: IndexSet<String>,
+    pub negative: IndexSet<String>,
+    pub layout: ImageLayout,
+    pub kind: NovelAIKind,
+    pub image: Vec<u8>,
 }
 
 impl Default for ImageRequestBuilder {
     fn default() -> Self {
-        let mut split = BTreeSet::default();
-        split.insert(',');
-        split.insert('，');
-        let negative = BTreeSet::default();
-
-        Self {
-            positive: Default::default(),
-            negative,
-            layout: ImageLayout::Portrait,
-            kind: NovelAIKind::Anime,
-            image: vec![],
-            split,
+        let mut positive = IndexSet::default();
+        let mut negative = IndexSet::default();
+        for word in include_str!("positive.txt").split(',') {
+            positive.insert(word.trim().to_lowercase());
         }
+        for word in include_str!("negative.txt").split(',') {
+            negative.insert(word.trim().to_lowercase());
+        }
+        Self { positive, negative, layout: ImageLayout::Portrait, kind: NovelAIKind::Anime, image: vec![] }
     }
 }
 
