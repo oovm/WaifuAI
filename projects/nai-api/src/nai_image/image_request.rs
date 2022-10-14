@@ -1,13 +1,15 @@
-use crate::{NaiError, NaiResult, NaiSecret};
-use base64::{decode, encode};
-use itertools::Itertools;
-use reqwest::{header::CONTENT_TYPE, Client, Method};
 use std::{
     fs::File,
     io::Write,
     ops::{AddAssign, SubAssign},
 };
+
+use base64::{decode, encode};
+use itertools::Itertools;
+use reqwest::{header::CONTENT_TYPE, Client, Method};
 use url::Url;
+
+use crate::{NaiError, NaiResult};
 
 use super::*;
 
@@ -20,8 +22,8 @@ pub struct ImageRequest {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ImageParameters {
-    pub width: u64,
-    pub height: u64,
+    pub width: u32,
+    pub height: u32,
     pub scale: f32,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub image: String,
@@ -98,16 +100,7 @@ impl ImageRequestBuilder {
     }
     fn build_parameters(&self) -> ImageParameters {
         let no_ref_image = self.image.is_empty();
-        let width = match self.layout {
-            ImageLayout::Square => 640,
-            ImageLayout::Portrait => 512,
-            ImageLayout::Landscape => 768,
-        };
-        let height = match self.layout {
-            ImageLayout::Square => 640,
-            ImageLayout::Portrait => 768,
-            ImageLayout::Landscape => 512,
-        };
+        let size = self.layout.small();
         let image = if no_ref_image { String::new() } else { encode(&self.image) };
         let steps = if no_ref_image { 28 } else { 50 };
         // 越小越遵守参考
@@ -115,8 +108,8 @@ impl ImageRequestBuilder {
         // 越大越遵守标签
         let scale = if no_ref_image { 11.0 } else { 13.0 };
         ImageParameters {
-            width,
-            height,
+            width: size.0,
+            height: size.1,
             quality_toggle: true,
             steps,
             image,
@@ -147,7 +140,7 @@ impl ImageRequestBuilder {
 }
 
 impl ImageRequest {
-    pub async fn request_image(&self, secret: &NaiSecret) -> NaiResult<Vec<u8>> {
+    pub async fn request_image(&self, bearer: &str) -> NaiResult<Vec<u8>> {
         let nai_url = Url::from_str("https://api.novelai.net/ai/generate-image")?;
         let nai_request = Client::default()
             .request(Method::POST, nai_url)
@@ -155,7 +148,7 @@ impl ImageRequest {
             // .header(USER_AGENT, "BotNodeSDK/v2.9.4")
             // .header("origin", "https://novelai.net")
             // .header("referer", "https://novelai.net/")
-            .bearer_auth(&secret.bearer)
+            .bearer_auth(bearer)
             .body(to_string(self)?)
             .timeout(Duration::from_secs(30));
         // text/event-stream

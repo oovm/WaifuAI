@@ -1,6 +1,6 @@
 [package]
 name = "novel-ai"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Aster <192607617@qq.com>"]
 description = "Noval-AI API Request"
 repository = "https://github.com/oovm/Ackerman"

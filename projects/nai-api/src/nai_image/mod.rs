@@ -1,4 +1,3 @@
-use indexmap::IndexSet;
 use std::{
     collections::hash_map::RandomState,
     hash::{BuildHasher, Hash, Hasher},
@@ -7,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 use serde_json::to_string;
 
@@ -46,4 +46,14 @@ pub enum ImageLayout {
     Square = 0,
     Portrait = 1,
     Landscape = 2,
+}
+
+impl ImageLayout {
+    pub fn small(&self) -> (u32, u32) {
+        match self {
+            ImageLayout::Square => (640, 640),
+            ImageLayout::Portrait => (512, 768),
+            ImageLayout::Landscape => (768, 512),
+        }
+    }
 }
