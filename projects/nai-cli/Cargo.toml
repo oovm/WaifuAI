@@ -18,7 +18,7 @@ toml = "0.5.9"
 clap = {version = "4.0.12", features = ["derive"]}
 tokio = {version = "1.21.2", features = ["full"]}
 tokio-stream = "0.1.11"
-novel-ai = {version = "0.2.0", path = "../nai-api"}
+novel-ai = {version = "0.3.0", path = "../nai-api"}
 futures-util = "0.3.24"
 rand = {version = "0.8.5", features = []}
 chrono = "0.4.22"

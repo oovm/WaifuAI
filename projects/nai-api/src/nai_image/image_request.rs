@@ -157,7 +157,7 @@ impl ImageRequest {
             None => {}
             Some((_, image)) => match decode(image.trim()) {
                 Ok(o) => return Ok(o),
-                Err(_) => {}
+                Err(e) => NaiError::NetError(e.to_string()),
             },
         }
         Err(NaiError::NetError(stream))
